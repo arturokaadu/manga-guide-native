@@ -147,4 +147,3 @@ export async function searchAnimeList(query) {
 export async function searchAnime(title) {
   return await searchAnimeComplete(title);
 }
-```
