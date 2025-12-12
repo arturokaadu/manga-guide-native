@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "luna-manga-guide-native",
-    "slug": "luna-manga-guide-native",
+    "name": "Luna's Manga Guide",
+    "slug": "luna-manga-guide",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -24,6 +24,11 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "platforms": [
+      "web",
+      "ios",
+      "android"
+    ]
   }
 }
