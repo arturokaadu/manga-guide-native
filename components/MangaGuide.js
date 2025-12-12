@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, ImageBackground } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, ImageBackground, Image } from 'react-native';
 import { getMangaContinuation, validateEpisode } from '../services/mangaService';
 import { searchAnimeList } from '../services/anilistService';
+import RecentlyFinished from './RecentlyFinished';
 
 export default function MangaGuide() {
     const [animeTitle, setAnimeTitle] = useState('');
@@ -11,6 +12,11 @@ export default function MangaGuide() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [backgroundImage, setBackgroundImage] = useState(null);
+
+    const handleRecentlyFinishedSelect = (anime) => {
+        setAnimeTitle(anime.title);
+        setEpisode(String(anime.lastEpisode || ''));
+    };
 
     const handleAnimeSearch = async (text) => {
         setAnimeTitle(text);
@@ -166,6 +172,8 @@ export default function MangaGuide() {
                         </Text>
                     </View>
                 )}
+
+                <RecentlyFinished onSelectAnime={handleRecentlyFinishedSelect} />
 
                 <Text style={styles.footer}>Powered by Luna + Gemini AI 🌙✨</Text>
             </View>
