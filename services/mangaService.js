@@ -21,7 +21,7 @@ export async function getMangaContinuation(animeTitle, episode) {
     console.log('[MangaService] Gemini unavailable, using rhythm fallback');
     const rhythmResult = estimateChapter(animeTitle, episode);
 
-    return { ...rhythmResult, mangaTitle, animeCover, isFiller: false, source: 'rhythm_fallback' };
+    return { ...rhythmResult, mangaTitle, animeCover, isFiller: false, source: 'Rhythm Calculator (Estimated)' };
 }
 
 export { validateEpisode };
