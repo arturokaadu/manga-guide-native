@@ -129,7 +129,7 @@ export default function MangaGuide() {
                 )}
 
                 {result && !result.isFiller && (
-                    <View style={styles.resultContainer}>
+                    <Animated.View style={[styles.resultContainer, { opacity: fadeAnim }]}>
                         <View style={styles.resultCard}>
                             <Text style={styles.mangaTitle}>🎬 {result.mangaTitle}</Text>
 
@@ -175,7 +175,7 @@ export default function MangaGuide() {
                                 </View>
                             )}
                         </View>
-                    </View>
+                    </Animated.View>
                 )}
 
                 {result && result.isFiller && (
