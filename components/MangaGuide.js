@@ -131,23 +131,41 @@ export default function MangaGuide() {
                 {result && !result.isFiller && (
                     <View style={styles.resultContainer}>
                         <View style={styles.resultCard}>
-                            <Text style={styles.mangaTitle}>{result.mangaTitle}</Text>
+                            <Text style={styles.mangaTitle}>🎬 {result.mangaTitle}</Text>
 
-                            <View style={styles.chapterInfo}>
-                                <Text style={styles.chapterLabel}>Continue From:</Text>
-                                <Text style={styles.chapterNumber}>Chapter {result.chapter}</Text>
-                                <Text style={styles.volumeNumber}>Volume {result.volume}</Text>
-                            </View>
+                            <View style={styles.mainContent}>
+                                {result.volumeCover && (
+                                    <Image
+                                        source={{ uri: result.volumeCover }}
+                                        style={styles.volumeCover}
+                                        resizeMode="cover"
+                                    />
+                                )}
 
-                            {result.context && (
-                                <View style={styles.contextInfo}>
-                                    <Text style={styles.contextText}>📖 {result.context}</Text>
+                                <View style={styles.infoSection}>
+                                    <View style={styles.chapterInfo}>
+                                        <Text style={styles.chapterLabel}>Continue From:</Text>
+                                        <Text style={styles.chapterNumber}>📖 Chapter {result.chapter}</Text>
+                                        <Text style={styles.volumeNumber}>📚 Volume {result.volume}</Text>
+                                    </View>
+
+                                    {result.context && (
+                                        <View style={styles.contextInfo}>
+                                            <Text style={styles.contextText}>"{result.context}"</Text>
+                                        </View>
+                                    )}
+
+                                    {result.source && (
+                                        <View style={styles.sourceInfo}>
+                                            <Text style={styles.sourceText}>ℹ️ Source: {result.source === 'gemini' ? 'Gemini AI (High accuracy)' : result.source}</Text>
+                                        </View>
+                                    )}
                                 </View>
-                            )}
+                            </View>
 
                             {result.reasoning && (
                                 <View style={styles.reasoningContainer}>
-                                    <Text style={styles.reasoningText}>ℹ️ {result.reasoning}</Text>
+                                    <Text style={styles.reasoningText}>💭 {result.reasoning}</Text>
                                 </View>
                             )}
 
@@ -278,7 +296,20 @@ const styles = StyleSheet.create({
         shadowRadius: 16,
     },
     mangaTitle: { fontSize: 26, fontWeight: 'bold', color: '#FFB7C5', marginBottom: 20 },
-    chapterInfo: { marginBottom: 20 },
+    mainContent: { flexDirection: 'row', marginBottom: 20, gap: 16 },
+    volumeCover: {
+        width: 140,
+        height: 210,
+        borderRadius: 12,
+        borderWidth: 3,
+        borderColor: '#FF6B35',
+        shadowColor: '#FF6B35',
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.5,
+        shadowRadius: 12,
+    },
+    infoSection: { flex: 1, justifyContent: 'space-around' },
+    chapterInfo: { marginBottom: 16 },
     chapterLabel: { color: '#aaa', fontSize: 14, marginBottom: 10 },
     chapterNumber: {
         fontSize: 36,
@@ -297,7 +328,16 @@ const styles = StyleSheet.create({
         borderLeftWidth: 3,
         borderLeftColor: '#FF6B35',
     },
-    contextText: { color: '#FFB7C5', fontSize: 15 },
+    contextText: { color: '#FFB7C5', fontSize: 15, fontStyle: 'italic' },
+    sourceInfo: {
+        backgroundColor: 'rgba(139, 92, 246, 0.15)',
+        padding: 10,
+        borderRadius: 8,
+        marginTop: 12,
+        borderLeftWidth: 3,
+        borderLeftColor: '#8B5CF6',
+    },
+    sourceText: { color: '#c4b5fd', fontSize: 13 },
     reasoningContainer: {
         backgroundColor: 'rgba(139, 92, 246, 0.15)',
         padding: 14,
