@@ -1,4 +1,4 @@
-const API_BASE = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000/api';
+const API_BASE = 'https://luna-manga-guide.vercel.app/api';
 
 export async function lookupManga(animeTitle, episode) {
     try {
