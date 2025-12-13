@@ -51,6 +51,7 @@ export default function MangaGuide() {
         }
 
         setResult(null);
+        setError(null);
 
         try {
             const data = await getMangaContinuation(animeTitle, episode);
@@ -60,10 +61,20 @@ export default function MangaGuide() {
                 setBackgroundImage(data.animeCover);
             }
         } catch (err) {
-            setError('Could not find manga information. Try another anime!');
+            console.error('[Search Error]:', err);
+            setError({
+                message: 'Could not find manga information',
+                details: 'Try checking the anime title or episode number',
+                canRetry: true
+            });
         } finally {
             setLoading(false);
         }
+    };
+
+    const handleRetry = () => {
+        setError(null);
+        handleSearch();
     };
 
     return (
