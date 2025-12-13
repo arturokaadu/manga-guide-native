@@ -164,7 +164,20 @@ export default function MangaGuide() {
 
                 {error && (
                     <View style={styles.errorContainer}>
-                        <Text style={styles.errorText}>❌ {error}</Text>
+                        <View style={styles.errorCard}>
+                            <Text style={styles.errorEmoji}>⚠️</Text>
+                            <Text style={styles.errorTitle}>
+                                {typeof error === 'string' ? error : error.message}
+                            </Text>
+                            {error.details && (
+                                <Text style={styles.errorDetails}>{error.details}</Text>
+                            )}
+                            {error.canRetry && (
+                                <TouchableOpacity style={styles.retryButton} onPress={handleRetry}>
+                                    <Text style={styles.retryButtonText}>🔄 Try Again</Text>
+                                </TouchableOpacity>
+                            )}
+                        </View>
                     </View>
                 )}
 
@@ -315,14 +328,47 @@ const styles = StyleSheet.create({
     },
     searchButtonText: { color: '#fff', fontSize: 18, fontWeight: '700' },
     errorContainer: {
-        backgroundColor: 'rgba(239, 68, 68, 0.2)',
-        borderLeftWidth: 4,
-        borderLeftColor: '#ef4444',
-        padding: 18,
-        borderRadius: 12,
-        marginBottom: 16
+        marginBottom: 20,
+        alignItems: 'center',
     },
-    errorText: { color: '#ff6b6b', fontSize: 15 },
+    errorCard: {
+        backgroundColor: 'rgba(239, 68, 68, 0.15)',
+        borderWidth: 2,
+        borderColor: '#ef4444',
+        borderRadius: 16,
+        padding: 24,
+        alignItems: 'center',
+        width: '100%',
+    },
+    errorEmoji: {
+        fontSize: 48,
+        marginBottom: 12,
+    },
+    errorTitle: {
+        color: '#ff6b6b',
+        fontSize: 16,
+        fontWeight: '600',
+        textAlign: 'center',
+        marginBottom: 8,
+    },
+    errorDetails: {
+        color: '#ff9999',
+        fontSize: 13,
+        textAlign: 'center',
+        marginBottom: 16,
+    },
+    retryButton: {
+        backgroundColor: '#FF6B35',
+        paddingVertical: 12,
+        paddingHorizontal: 24,
+        borderRadius: 12,
+        marginTop: 8,
+    },
+    retryButtonText: {
+        color: '#fff',
+        fontSize: 15,
+        fontWeight: '600',
+    },
     resultContainer: { marginBottom: 24 },
     resultCard: {
         backgroundColor: 'rgba(139, 92, 246, 0.20)',
