@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, ImageBackground, Image } from 'react-native';
+import React, { useState, useRef, useEffect } from 'react';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, ImageBackground, Image, Animated } from 'react-native';
+
 import { getMangaContinuation, validateEpisode } from '../services/mangaService';
 import { searchAnimeList } from '../services/anilistService';
 import RecentlyFinished from './RecentlyFinished';
