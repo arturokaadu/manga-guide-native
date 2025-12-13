@@ -82,6 +82,30 @@ export default function MangaGuide() {
         handleSearch();
     };
 
+    // Trigger fade-in animation when results load
+    useEffect(() => {
+        if (result && !result.isFiller) {
+            fadeAnim.setValue(0);
+            Animated.timing(fadeAnim, {
+                toValue: 1,
+                duration: 600,
+                useNativeDriver: true,
+            }).start();
+        }
+    }, [result]);
+
+    // Trigger slide animation for suggestions
+    useEffect(() => {
+        if (suggestions.length > 0) {
+            slideAnim.setValue(-10);
+            Animated.timing(slideAnim, {
+                toValue: 0,
+                duration: 300,
+                useNativeDriver: true,
+            }).start();
+        }
+    }, [suggestions]);
+
     return (
         <ScrollView style={styles.container}>
             {backgroundImage && (
