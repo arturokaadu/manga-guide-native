@@ -3,6 +3,25 @@
 
 const ANILIST_API = 'https://graphql.anilist.co';
 
+// Manual overrides for anime with known total episodes (AniList relations often incomplete)
+const KNOWN_EPISODE_TOTALS = {
+  'Demon Slayer': 63,          // Kimetsu no Yaiba (all seasons)
+  'Kimetsu no Yaiba': 63,
+  'Jujutsu Kaisen': 47,        // S1 (24) + S2 (23)
+  'Attack on Titan': 87,       // All seasons
+  'Shingeki no Kyojin': 87,
+  'My Hero Academia': 138,     // All seasons
+  'Boku no Hero Academia': 138,
+  'Naruto': 220,               // Original only
+  'Naruto Shippuden': 500,     // Shippuden only
+  'One Piece': 1100,           // Ongoing, approximate
+  'Bleach': 366,               // Original run
+  'Tokyo Revengers': 50,       // All seasons
+  'Vinland Saga': 48,          // S1 (24) + S2 (24)
+  'Blue Lock': 24,             // S1
+  'Chainsaw Man': 12,          // S1
+};
+
 // Get TOTAL episodes across ALL seasons/sequels
 export async function searchAnimeComplete(title) {
   const query = `
@@ -64,8 +83,22 @@ export async function searchAnimeComplete(title) {
   }
 }
 
-// Validate episode with CORRECT total count
+// Validate episode with CORRECT total count (manual override first, then AniList)
 export async function validateEpisode(animeTitle, episode) {
+  // Check manual override first
+  const knownTotal = KNOWN_EPISODE_TOTALS[animeTitle];
+
+  if (knownTotal) {
+    if (parseInt(episode) > knownTotal) {
+      return {
+        valid: false,
+        error: `${animeTitle} only has ${knownTotal} episodes`
+      };
+    }
+    return { valid: true, totalEpisodes: knownTotal };
+  }
+
+  // Fallback to AniList query
   const anime = await searchAnimeComplete(animeTitle);
 
   if (!anime) {
