@@ -14,201 +14,204 @@ export default function MangaGuide() {
     const [error, setError] = useState(null);
     const [backgroundImage, setBackgroundImage] = useState(null);
 
-    const handleRecentlyFinishedSelect = (anime) => {
-        setAnimeTitle(anime.title);
-        setEpisode(String(anime.lastEpisode || ''));
-    };
+    // Animation refs
+    const fadeAnim = useRef(new Animated.Value(0)).current;
+    const slideAnim = useRef(new Animated.Value(-10)).current;
 
-    const handleAnimeSearch = async (text) => {
-        setAnimeTitle(text);
-        if (text.length >= 2) {
-            const results = await searchAnimeList(text);
-            setSuggestions(results);
-        } else {
-            setSuggestions([]);
-        }
-    };
+    setAnimeTitle(anime.title);
+    setEpisode(String(anime.lastEpisode || ''));
+};
 
-    const selectAnime = (anime) => {
-        setAnimeTitle(anime.title.romaji);
+const handleAnimeSearch = async (text) => {
+    setAnimeTitle(text);
+    if (text.length >= 2) {
+        const results = await searchAnimeList(text);
+        setSuggestions(results);
+    } else {
         setSuggestions([]);
-    };
+    }
+};
 
-    const handleSearch = async () => {
-        if (!animeTitle || !episode) {
-            setError('Please enter both anime title and episode number');
-            return;
+const selectAnime = (anime) => {
+    setAnimeTitle(anime.title.romaji);
+    setSuggestions([]);
+};
+
+const handleSearch = async () => {
+    if (!animeTitle || !episode) {
+        setError('Please enter both anime title and episode number');
+        return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    const validation = await validateEpisode(animeTitle, episode);
+
+    if (!validation.valid) {
+        setError(validation.error);
+        setLoading(false);
+        return;
+    }
+
+    setResult(null);
+    setError(null);
+
+    try {
+        const data = await getMangaContinuation(animeTitle, episode);
+        setResult(data);
+
+        if (data.animeCover) {
+            setBackgroundImage(data.animeCover);
         }
+    } catch (err) {
+        console.error('[Search Error]:', err);
+        setError({
+            message: 'Could not find manga information',
+            details: 'Try checking the anime title or episode number',
+            canRetry: true
+        });
+    } finally {
+        setLoading(false);
+    }
+};
 
-        setLoading(true);
-        setError(null);
+const handleRetry = () => {
+    setError(null);
+    handleSearch();
+};
 
-        const validation = await validateEpisode(animeTitle, episode);
+return (
+    <ScrollView style={styles.container}>
+        {backgroundImage && (
+            <ImageBackground source={{ uri: backgroundImage }} style={styles.backgroundContainer} blurRadius={50} resizeMode="cover">
+                <View style={styles.darkOverlay} />
+            </ImageBackground>
+        )}
 
-        if (!validation.valid) {
-            setError(validation.error);
-            setLoading(false);
-            return;
-        }
+        <View style={styles.content}>
+            <View style={styles.headerGradient}>
+                <Text style={styles.title}>🌙 Luna's Manga Guide</Text>
+                <Text style={styles.subtitle}>Continue your anime journey in manga</Text>
+            </View>
 
-        setResult(null);
-        setError(null);
+            <View style={styles.inputContainer}>
+                <TextInput
+                    style={styles.input}
+                    placeholder="Search anime..."
+                    placeholderTextColor="#FF6B35"
+                    value={animeTitle}
+                    onChangeText={handleAnimeSearch}
+                />
 
-        try {
-            const data = await getMangaContinuation(animeTitle, episode);
-            setResult(data);
+                {suggestions.length > 0 && (
+                    <View style={styles.suggestionsContainer}>
+                        {suggestions.map((anime) => (
+                            <TouchableOpacity
+                                key={anime.id}
+                                style={styles.suggestionItem}
+                                onPress={() => selectAnime(anime)}
+                            >
+                                <Text style={styles.suggestionText}>{anime.title.romaji}</Text>
+                                <Text style={styles.suggestionEps}>{anime.episodes} eps</Text>
+                            </TouchableOpacity>
+                        ))}
+                    </View>
+                )}
 
-            if (data.animeCover) {
-                setBackgroundImage(data.animeCover);
-            }
-        } catch (err) {
-            console.error('[Search Error]:', err);
-            setError({
-                message: 'Could not find manga information',
-                details: 'Try checking the anime title or episode number',
-                canRetry: true
-            });
-        } finally {
-            setLoading(false);
-        }
-    };
+                <TextInput
+                    style={styles.input}
+                    placeholder="Episode Number"
+                    placeholderTextColor="#FF6B35"
+                    value={episode}
+                    onChangeText={setEpisode}
+                    keyboardType="numeric"
+                />
 
-    const handleRetry = () => {
-        setError(null);
-        handleSearch();
-    };
+                <TouchableOpacity style={styles.searchButton} onPress={handleSearch} disabled={loading}>
+                    {loading ? (
+                        <ActivityIndicator color="#fff" />
+                    ) : (
+                        <Text style={styles.searchButtonText}>Search 🔍</Text>
+                    )}
+                </TouchableOpacity>
+            </View>
 
-    return (
-        <ScrollView style={styles.container}>
-            {backgroundImage && (
-                <ImageBackground source={{ uri: backgroundImage }} style={styles.backgroundContainer} blurRadius={50} resizeMode="cover">
-                    <View style={styles.darkOverlay} />
-                </ImageBackground>
+            {error && (
+                <View style={styles.errorContainer}>
+                    <Text style={styles.errorText}>❌ {error}</Text>
+                </View>
             )}
 
-            <View style={styles.content}>
-                <View style={styles.headerGradient}>
-                    <Text style={styles.title}>🌙 Luna's Manga Guide</Text>
-                    <Text style={styles.subtitle}>Continue your anime journey in manga</Text>
-                </View>
+            {result && !result.isFiller && (
+                <Animated.View style={[styles.resultContainer, { opacity: fadeAnim }]}>
+                    <View style={styles.resultCard}>
+                        <Text style={styles.mangaTitle}>🎬 {result.mangaTitle}</Text>
 
-                <View style={styles.inputContainer}>
-                    <TextInput
-                        style={styles.input}
-                        placeholder="Search anime..."
-                        placeholderTextColor="#FF6B35"
-                        value={animeTitle}
-                        onChangeText={handleAnimeSearch}
-                    />
+                        <View style={styles.mainContent}>
+                            {result.volumeCover && (
+                                <Image
+                                    source={{ uri: result.volumeCover }}
+                                    style={styles.volumeCover}
+                                    resizeMode="cover"
+                                />
+                            )}
 
-                    {suggestions.length > 0 && (
-                        <View style={styles.suggestionsContainer}>
-                            {suggestions.map((anime) => (
-                                <TouchableOpacity
-                                    key={anime.id}
-                                    style={styles.suggestionItem}
-                                    onPress={() => selectAnime(anime)}
-                                >
-                                    <Text style={styles.suggestionText}>{anime.title.romaji}</Text>
-                                    <Text style={styles.suggestionEps}>{anime.episodes} eps</Text>
-                                </TouchableOpacity>
-                            ))}
-                        </View>
-                    )}
+                            <View style={styles.infoSection}>
+                                <View style={styles.chapterInfo}>
+                                    <Text style={styles.chapterLabel}>Continue From:</Text>
+                                    <Text style={styles.chapterNumber}>📖 Chapter {result.chapter}</Text>
+                                    <Text style={styles.volumeNumber}>📚 Volume {result.volume}</Text>
+                                </View>
 
-                    <TextInput
-                        style={styles.input}
-                        placeholder="Episode Number"
-                        placeholderTextColor="#FF6B35"
-                        value={episode}
-                        onChangeText={setEpisode}
-                        keyboardType="numeric"
-                    />
-
-                    <TouchableOpacity style={styles.searchButton} onPress={handleSearch} disabled={loading}>
-                        {loading ? (
-                            <ActivityIndicator color="#fff" />
-                        ) : (
-                            <Text style={styles.searchButtonText}>Search 🔍</Text>
-                        )}
-                    </TouchableOpacity>
-                </View>
-
-                {error && (
-                    <View style={styles.errorContainer}>
-                        <Text style={styles.errorText}>❌ {error}</Text>
-                    </View>
-                )}
-
-                {result && !result.isFiller && (
-                    <Animated.View style={[styles.resultContainer, { opacity: fadeAnim }]}>
-                        <View style={styles.resultCard}>
-                            <Text style={styles.mangaTitle}>🎬 {result.mangaTitle}</Text>
-
-                            <View style={styles.mainContent}>
-                                {result.volumeCover && (
-                                    <Image
-                                        source={{ uri: result.volumeCover }}
-                                        style={styles.volumeCover}
-                                        resizeMode="cover"
-                                    />
+                                {result.context && (
+                                    <View style={styles.contextInfo}>
+                                        <Text style={styles.contextText}>"{result.context}"</Text>
+                                    </View>
                                 )}
 
-                                <View style={styles.infoSection}>
-                                    <View style={styles.chapterInfo}>
-                                        <Text style={styles.chapterLabel}>Continue From:</Text>
-                                        <Text style={styles.chapterNumber}>📖 Chapter {result.chapter}</Text>
-                                        <Text style={styles.volumeNumber}>📚 Volume {result.volume}</Text>
+                                {result.source && (
+                                    <View style={styles.sourceInfo}>
+                                        <Text style={styles.sourceText}>ℹ️ Source: {result.source === 'gemini' ? 'Gemini AI (High accuracy)' : result.source}</Text>
                                     </View>
-
-                                    {result.context && (
-                                        <View style={styles.contextInfo}>
-                                            <Text style={styles.contextText}>"{result.context}"</Text>
-                                        </View>
-                                    )}
-
-                                    {result.source && (
-                                        <View style={styles.sourceInfo}>
-                                            <Text style={styles.sourceText}>ℹ️ Source: {result.source === 'gemini' ? 'Gemini AI (High accuracy)' : result.source}</Text>
-                                        </View>
-                                    )}
-                                </View>
+                                )}
                             </View>
-
-                            {result.reasoning && (
-                                <View style={styles.reasoningContainer}>
-                                    <Text style={styles.reasoningText}>💭 {result.reasoning}</Text>
-                                </View>
-                            )}
-
-                            {result.note && (
-                                <View style={styles.noteContainer}>
-                                    <Text style={styles.noteText}>📝 {result.note}</Text>
-                                </View>
-                            )}
                         </View>
-                    </Animated.View>
-                )}
 
-                {result && result.isFiller && (
-                    <View style={styles.fillerContainer}>
-                        <Text style={styles.fillerEmoji}>⚠️</Text>
-                        <Text style={styles.fillerTitle}>Filler Episode</Text>
-                        <Text style={styles.fillerText}>
-                            Episode {episode} is anime-original filler and doesn't adapt manga content.
-                        </Text>
-                        <Text style={styles.fillerSuggestion}>
-                            Try the previous or next episode for canon content.
-                        </Text>
+                        {result.reasoning && (
+                            <View style={styles.reasoningContainer}>
+                                <Text style={styles.reasoningText}>💭 {result.reasoning}</Text>
+                            </View>
+                        )}
+
+                        {result.note && (
+                            <View style={styles.noteContainer}>
+                                <Text style={styles.noteText}>📝 {result.note}</Text>
+                            </View>
+                        )}
                     </View>
-                )}
+                </Animated.View>
+            )}
 
-                <RecentlyFinished onSelectAnime={handleRecentlyFinishedSelect} />
+            {result && result.isFiller && (
+                <View style={styles.fillerContainer}>
+                    <Text style={styles.fillerEmoji}>⚠️</Text>
+                    <Text style={styles.fillerTitle}>Filler Episode</Text>
+                    <Text style={styles.fillerText}>
+                        Episode {episode} is anime-original filler and doesn't adapt manga content.
+                    </Text>
+                    <Text style={styles.fillerSuggestion}>
+                        Try the previous or next episode for canon content.
+                    </Text>
+                </View>
+            )}
 
-                <Text style={styles.footer}>Powered by Luna + Gemini AI 🌙✨</Text>
-            </View>
-        </ScrollView>
-    );
+            <RecentlyFinished onSelectAnime={handleRecentlyFinishedSelect} />
+
+            <Text style={styles.footer}>Powered by Luna + Gemini AI 🌙✨</Text>
+        </View>
+    </ScrollView>
+);
 }
 
 const styles = StyleSheet.create({
