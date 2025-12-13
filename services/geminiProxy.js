@@ -1,4 +1,4 @@
-const API_BASE = 'https://luna-manga-guide.vercel.app/api';
+const API_BASE = '/api'; // Same Vercel project = no CORS
 
 export async function lookupManga(animeTitle, episode) {
     try {
