@@ -369,6 +369,36 @@ const styles = StyleSheet.create({
         fontSize: 15,
         fontWeight: '600',
     },
+    skeletonContainer: {
+        marginBottom: 20,
+    },
+    skeletonCard: {
+        backgroundColor: 'rgba(139, 92, 246, 0.1)',
+        borderWidth: 2,
+        borderColor: '#8B5CF6',
+        borderRadius: 16,
+        padding: 24,
+    },
+    skeletonTitle: {
+        height: 28,
+        backgroundColor: 'rgba(255, 183, 197, 0.2)',
+        borderRadius: 8,
+        marginBottom: 16,
+        width: '60%',
+    },
+    skeletonLine: {
+        height: 20,
+        backgroundColor: 'rgba(255, 107, 53, 0.2)',
+        borderRadius: 6,
+        marginBottom: 12,
+        width: '100%',
+    },
+    skeletonLineShort: {
+        height: 16,
+        backgroundColor: 'rgba(139, 92, 246, 0.2)',
+        borderRadius: 6,
+        width: '40%',
+    },
     resultContainer: { marginBottom: 24 },
     resultCard: {
         backgroundColor: 'rgba(139, 92, 246, 0.20)',
