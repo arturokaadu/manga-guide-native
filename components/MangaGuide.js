@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, ImageBackground, Image, Animated } from 'react-native';
 
 import { getMangaContinuation, validateEpisode } from '../services/mangaService';
-import { searchAnimeList } from '../services/anilistService';
+import { searchAnimeList, searchAnime } from '../services/anilistService';
 import { getArcsForAnime } from '../data/animeArcs';
 import RecentlyFinished from './RecentlyFinished';
 import SeasonSelector from './SeasonSelector';
@@ -41,7 +41,7 @@ export default function MangaGuide() {
         }
     };
 
-    const selectAnime = (anime) => {
+    const selectAnime = async (anime) => {
         const title = anime.title.romaji;
         setAnimeTitle(title);
         setSuggestions([]);
@@ -49,19 +49,46 @@ export default function MangaGuide() {
         // Check if this anime has arcs defined
         let arcs = getArcsForAnime(title);
 
-        // If no arcs defined, create a generic arc for all episodes
+        // If no arcs defined, fetch REAL total from AniList and auto-generate seasons
         if (!arcs || !arcs.hasArcs) {
-            const totalEpisodes = anime.episodes || 999; // Use total from AniList
-            arcs = {
-                hasArcs: true,
-                arcs: [
-                    {
-                        name: `All Episodes (1-${totalEpisodes})`,
+            try {
+                // Query AniList for complete anime data
+                const animeData = await searchAnime(title);
+                const totalEpisodes = animeData?.totalEpisodes || animeData?.episodes || 24;
+
+                // Auto-generate seasons (every 12-13 episodes)
+                const EPISODES_PER_SEASON = 13;
+                const seasonCount = Math.ceil(totalEpisodes / EPISODES_PER_SEASON);
+
+                arcs = {
+                    hasArcs: true,
+                    arcs: []
+                };
+
+                for (let i = 0; i < seasonCount; i++) {
+                    const start = (i * EPISODES_PER_SEASON) + 1;
+                    const end = Math.min((i + 1) * EPISODES_PER_SEASON, totalEpisodes);
+
+                    arcs.arcs.push({
+                        name: seasonCount === 1
+                            ? `All Episodes (1-${totalEpisodes})`
+                            : `Season ${i + 1} (${start}-${end})`,
+                        start,
+                        end
+                    });
+                }
+            } catch (error) {
+                console.error('[selectAnime] Failed to fetch anime data:', error);
+                // Fallback to single generic arc
+                arcs = {
+                    hasArcs: true,
+                    arcs: [{
+                        name: 'Episodes',
                         start: 1,
-                        end: totalEpisodes
-                    }
-                ]
-            };
+                        end: 999
+                    }]
+                };
+            }
         }
 
         setAnimeArcs(arcs);
