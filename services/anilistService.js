@@ -22,6 +22,95 @@ const KNOWN_EPISODE_TOTALS = {
   'Chainsaw Man': 12,          // S1
 };
 
+// Get anime with ALL seasons structured as arcs
+export async function getAnimeWithSeasons(title) {
+  const query = `
+    query ($search: String) {
+      Media(search: $search, type: ANIME) {
+        id
+        title { romaji english }
+        episodes
+        coverImage { large color }
+        seasonYear
+        season
+        relations {
+          edges {
+            node {
+              id
+              type
+              format
+              episodes
+              title { romaji }
+              seasonYear
+            }
+            relationType
+          }
+        }
+      }
+    }
+  `;
+
+  try {
+    const response = await fetch(ANILIST_API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      body: JSON.stringify({ query, variables: { search: title } })
+    });
+
+    const data = await response.json();
+    if (data.errors) throw new Error('AniList API error');
+
+    const media = data.data.Media;
+
+    // Build seasons array from main + sequels
+    const seasons = [];
+    let episodeOffset = 0;
+
+    // Add main season/series
+    if (media.episodes) {
+      seasons.push({
+        name: `Season 1`,
+        title: media.title.romaji,
+        start: 1,
+        end: media.episodes,
+        year: media.seasonYear
+      });
+      episodeOffset = media.episodes;
+    }
+
+    // Add sequel seasons
+    if (media.relations && media.relations.edges) {
+      const sequels = media.relations.edges
+        .filter(edge => edge.relationType === 'SEQUEL' && edge.node.type === 'ANIME' && edge.node.episodes)
+        .sort((a, b) => (a.node.seasonYear || 0) - (b.node.seasonYear || 0));
+
+      sequels.forEach((sequel, index) => {
+        const start = episodeOffset + 1;
+        const end = episodeOffset + sequel.node.episodes;
+
+        seasons.push({
+          name: `Season ${index + 2}`,
+          title: sequel.node.title.romaji,
+          start,
+          end,
+          year: sequel.node.seasonYear
+        });
+
+        episodeOffset = end;
+      });
+    }
+
+    return {
+      ...media,
+      seasons,
+      totalEpisodes: episodeOffset
+    };
+  } catch (error) {
+    console.error('[AniList] Get seasons failed:', error);
+    return null;
+  }
+}
+
 // Get TOTAL episodes across ALL seasons/sequels
 export async function searchAnimeComplete(title) {
   const query = `
