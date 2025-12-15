@@ -47,7 +47,23 @@ export default function MangaGuide() {
         setSuggestions([]);
 
         // Check if this anime has arcs defined
-        const arcs = getArcsForAnime(title);
+        let arcs = getArcsForAnime(title);
+
+        // If no arcs defined, create a generic arc for all episodes
+        if (!arcs || !arcs.hasArcs) {
+            const totalEpisodes = anime.episodes || 999; // Use total from AniList
+            arcs = {
+                hasArcs: true,
+                arcs: [
+                    {
+                        name: `All Episodes (1-${totalEpisodes})`,
+                        start: 1,
+                        end: totalEpisodes
+                    }
+                ]
+            };
+        }
+
         setAnimeArcs(arcs);
         setSelectedArc(null);
         setSelectedEpisode(null);
@@ -170,8 +186,8 @@ export default function MangaGuide() {
                         </View>
                     )}
 
-                    {/* Conditional: Show arc selectors or manual episode input */}
-                    {animeArcs && animeArcs.hasArcs ? (
+                    {/* Selectors - shown for all anime */}
+                    {animeArcs && animeArcs.hasArcs && (
                         <>
                             <SeasonSelector
                                 arcs={animeArcs.arcs}
@@ -186,15 +202,6 @@ export default function MangaGuide() {
                                 />
                             )}
                         </>
-                    ) : (
-                        <TextInput
-                            style={styles.input}
-                            placeholder="Episode Number"
-                            placeholderTextColor="#FF6B35"
-                            value={episode}
-                            onChangeText={setEpisode}
-                            keyboardType="numeric"
-                        />
                     )}
 
                     <TouchableOpacity style={styles.searchButton} onPress={handleSearch} disabled={loading}>
