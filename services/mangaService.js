@@ -2,6 +2,7 @@ import { validateEpisode, searchAnime } from './anilistService';
 import { isFiller } from '../data/fillerLists';
 import { estimateChapter } from './rhythmCalculator';
 import * as geminiProxy from './geminiProxy';
+import { fetchVolumeCover } from './volumeCoverService';
 
 export async function getMangaContinuation(animeTitle, episode) {
     try {
@@ -26,10 +27,14 @@ export async function getMangaContinuation(animeTitle, episode) {
         const geminiResult = await geminiProxy.lookupManga(animeTitle, episode);
 
         if (geminiResult.success && geminiResult.chapter && geminiResult.volume) {
+            // Fetch volume cover
+            const volumeCoverUrl = await fetchVolumeCover(geminiResult.volume, mangaTitle);
+
             return {
                 ...geminiResult,
                 mangaTitle,
                 animeCover,
+                volumeCoverUrl,
                 isFiller: false,
                 source: 'Gemini AI (High accuracy)'
             };
@@ -39,10 +44,14 @@ export async function getMangaContinuation(animeTitle, episode) {
         console.log('[MangaService] Gemini unavailable, using rhythm fallback');
         const rhythmResult = estimateChapter(animeTitle, episode);
 
+        // Fetch volume cover for rhythm result
+        const volumeCoverUrl = await fetchVolumeCover(rhythmResult.volume, mangaTitle);
+
         return {
             ...rhythmResult,
             mangaTitle,
             animeCover,
+            volumeCoverUrl,
             isFiller: false,
             source: 'Rhythm Calculator (Estimated)'
         };
