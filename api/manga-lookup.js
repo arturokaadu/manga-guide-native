@@ -10,7 +10,9 @@ module.exports = async (req, res) => {
     const allowedOrigins = [
         'https://manga-guide-native.vercel.app',
         'https://luna-manga-guide.vercel.app',
-        'http://localhost:19006' // local dev
+        'http://localhost:19006', // Expo local dev
+        'http://localhost:8081',  // Expo web dev port 1
+        'http://localhost:8082'   // Expo web dev port 2
     ];
 
     const origin = req.headers.origin;
