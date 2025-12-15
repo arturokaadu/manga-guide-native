@@ -3,7 +3,10 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Activi
 
 import { getMangaContinuation, validateEpisode } from '../services/mangaService';
 import { searchAnimeList } from '../services/anilistService';
+import { getArcsForAnime } from '../data/animeArcs';
 import RecentlyFinished from './RecentlyFinished';
+import SeasonSelector from './SeasonSelector';
+import EpisodeSelector from './EpisodeSelector';
 
 export default function MangaGuide() {
     const [animeTitle, setAnimeTitle] = useState('');
@@ -13,6 +16,11 @@ export default function MangaGuide() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [backgroundImage, setBackgroundImage] = useState(null);
+
+    // Arc/Season selector state
+    const [animeArcs, setAnimeArcs] = useState(null);
+    const [selectedArc, setSelectedArc] = useState(null);
+    const [selectedEpisode, setSelectedEpisode] = useState(null);
 
     // Animation refs
     const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -34,8 +42,26 @@ export default function MangaGuide() {
     };
 
     const selectAnime = (anime) => {
-        setAnimeTitle(anime.title.romaji);
+        const title = anime.title.romaji;
+        setAnimeTitle(title);
         setSuggestions([]);
+
+        // Check if this anime has arcs defined
+        const arcs = getArcsForAnime(title);
+        setAnimeArcs(arcs);
+        setSelectedArc(null);
+        setSelectedEpisode(null);
+        setEpisode(''); // Clear manual episode input
+    };
+
+    const handleArcSelect = (arc) => {
+        setSelectedArc(arc);
+        setSelectedEpisode(null); // Reset episode when changing arc
+    };
+
+    const handleEpisodeSelect = (episodeNum) => {
+        setSelectedEpisode(episodeNum);
+        setEpisode(String(episodeNum)); // Sync with episode state
     };
 
     const handleSearch = async () => {
@@ -144,14 +170,32 @@ export default function MangaGuide() {
                         </View>
                     )}
 
-                    <TextInput
-                        style={styles.input}
-                        placeholder="Episode Number"
-                        placeholderTextColor="#FF6B35"
-                        value={episode}
-                        onChangeText={setEpisode}
-                        keyboardType="numeric"
-                    />
+                    {/* Conditional: Show arc selectors or manual episode input */}
+                    {animeArcs && animeArcs.hasArcs ? (
+                        <>
+                            <SeasonSelector
+                                arcs={animeArcs.arcs}
+                                selectedArc={selectedArc}
+                                onSelectArc={handleArcSelect}
+                            />
+                            {selectedArc && (
+                                <EpisodeSelector
+                                    arc={selectedArc}
+                                    selectedEpisode={selectedEpisode}
+                                    onSelectEpisode={handleEpisodeSelect}
+                                />
+                            )}
+                        </>
+                    ) : (
+                        <TextInput
+                            style={styles.input}
+                            placeholder="Episode Number"
+                            placeholderTextColor="#FF6B35"
+                            value={episode}
+                            onChangeText={setEpisode}
+                            keyboardType="numeric"
+                        />
+                    )}
 
                     <TouchableOpacity style={styles.searchButton} onPress={handleSearch} disabled={loading}>
                         {loading ? (
