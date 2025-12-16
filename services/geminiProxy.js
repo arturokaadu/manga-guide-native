@@ -3,21 +3,24 @@ import { Platform } from 'react-native';
 // Use local proxy in development (requires 'node local-proxy.js')
 // Use Vercel production URL in production
 const API_URL = (__DEV__ || (Platform.OS === 'web' && typeof window !== 'undefined' && window.location.hostname.includes('localhost')))
-  ? 'http://localhost:3000/api/manga-lookup'
+  ? 'http://localhost:3006/api/manga-lookup'
   : 'https://manga-guide-native.vercel.app/api/manga-lookup';
 
 export async function lookupManga(animeTitle, episode) {
   try {
     const response = await fetch(API_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ animeTitle, episode }),
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ animeTitle, episode: String(episode) }),
       // Increased timeout for Gemini generation
       signal: AbortSignal.timeout(20000)
     });
 
     if (!response.ok) {
-      throw new Error(`Proxy error: ${response.status}`);
+      const errData = await response.json().catch(() => ({}));
+      throw new Error(errData.error || errData.details || `Proxy error: ${response.status}`);
     }
 
     const data = await response.json();

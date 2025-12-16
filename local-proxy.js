@@ -2,7 +2,7 @@ const http = require('http');
 const https = require('https');
 
 const API_KEY = "AIzaSyD-CH4S6YpzZW_b9vdKwvwfkLsNtzjGIx8";
-const PORT = 3000;
+const PORT = 3006;
 
 const server = http.createServer((req, res) => {
     // Set CORS headers
@@ -47,9 +47,10 @@ CRITICAL RULES:
 4. Context should mention key events/arc name in that chapter
 5. Return ONLY valid JSON, no extra text`;
 
-                // Call Google API
+                // Try gemini-1.5-pro first
+                // Use v1beta REST endpoint
                 const googleReq = https.request(
-                    `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`,
+                    `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=${API_KEY}`,
                     {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' }
@@ -60,6 +61,12 @@ CRITICAL RULES:
                         googleRes.on('end', () => {
                             try {
                                 const data = JSON.parse(googleBody);
+
+                                // Check for API errors
+                                if (data.error) {
+                                    throw new Error(`Google API Error: ${data.error.message} (Code: ${data.error.code})`);
+                                }
+
                                 const candidate = data.candidates?.[0]?.content?.parts?.[0]?.text;
 
                                 if (!candidate) {
@@ -72,9 +79,13 @@ CRITICAL RULES:
                                 res.writeHead(200, { 'Content-Type': 'application/json' });
                                 res.end(JSON.stringify({ success: true, ...cleanData, source: 'gemini (local proxy)' }));
                             } catch (e) {
-                                console.error('[Proxy] Parse Error:', e);
-                                res.writeHead(500);
-                                res.end(JSON.stringify({ error: 'Failed to process Gemini response' }));
+                                console.error('[Proxy] Processing Error:', e);
+                                console.error('[Proxy] Raw Body:', googleBody);
+                                res.writeHead(500, { 'Content-Type': 'application/json' });
+                                res.end(JSON.stringify({
+                                    error: `Proxy Error: ${e.message}`,
+                                    details: googleBody ? googleBody.substring(0, 500) : 'No body'
+                                }));
                             }
                         });
                     }
@@ -83,7 +94,7 @@ CRITICAL RULES:
                 googleReq.on('error', (e) => {
                     console.error('[Proxy] Google Request Error:', e);
                     res.writeHead(500);
-                    res.end(JSON.stringify({ error: e.message }));
+                    res.end(JSON.stringify({ error: `Network Error: ${e.message}` }));
                 });
 
                 googleReq.write(JSON.stringify({
@@ -104,7 +115,7 @@ CRITICAL RULES:
 });
 
 server.listen(PORT, () => {
-    console.log(`\n🚀 Local Gemini Proxy running at http://localhost:${PORT}`);
+    console.log(`\n🚀 Local Gemini Proxy (Manual REST) running at http://localhost:${PORT}`);
     console.log('✅ CORS enabled for all origins');
     console.log('⏳ Waiting for requests...\n');
 });

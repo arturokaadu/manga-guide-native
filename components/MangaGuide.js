@@ -156,8 +156,8 @@ export default function MangaGuide() {
         } catch (err) {
             console.error('[Search Error]:', err);
             setError({
-                message: 'Could not find manga information',
-                details: 'Try checking the anime title or episode number',
+                message: 'Manga lookup failed',
+                details: err.message || 'Unknown error occurred',
                 canRetry: true
             });
         } finally {

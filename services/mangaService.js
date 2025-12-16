@@ -26,9 +26,17 @@ export async function getMangaContinuation(animeTitle, episode) {
         // Step 4: Try Gemini AI first
         const geminiResult = await geminiProxy.lookupManga(animeTitle, episode);
 
-        if (geminiResult.success && geminiResult.chapter && geminiResult.volume) {
+        if (geminiResult.success) {
             // Fetch volume cover
-            const volumeCoverUrl = await fetchVolumeCover(geminiResult.volume, mangaTitle);
+            let volumeCoverUrl = null;
+            if (geminiResult.volume) {
+                volumeCoverUrl = await fetchVolumeCover(geminiResult.volume, mangaTitle);
+            }
+
+            // Use anime cover if volume cover not found or is placeholder
+            if (!volumeCoverUrl || volumeCoverUrl.includes('placeholder')) {
+                volumeCoverUrl = animeCover;
+            }
 
             return {
                 ...geminiResult,
@@ -38,23 +46,16 @@ export async function getMangaContinuation(animeTitle, episode) {
                 isFiller: false,
                 source: 'Gemini AI (High accuracy)'
             };
+        } else {
+            // If Gemini fails, throw the error to frontend instead of using estimated calculator
+            throw new Error(geminiResult.error || 'Gemini AI lookup failed');
         }
 
+        /* 
+        // FALBACK DISABLED AS PER USER REQUEST
         // Step 5: Fallback to rhythm calculator
-        console.log('[MangaService] Gemini unavailable, using rhythm fallback');
-        const rhythmResult = estimateChapter(animeTitle, episode);
-
-        // Fetch volume cover for rhythm result
-        const volumeCoverUrl = await fetchVolumeCover(rhythmResult.volume, mangaTitle);
-
-        return {
-            ...rhythmResult,
-            mangaTitle,
-            animeCover,
-            volumeCoverUrl,
-            isFiller: false,
-            source: 'Rhythm Calculator (Estimated)'
-        };
+        // ...
+        */
     } catch (error) {
         console.error('[MangaService] Error:', error);
         throw error;
