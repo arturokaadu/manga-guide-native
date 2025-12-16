@@ -269,3 +269,37 @@ export async function searchAnimeList(query) {
 export async function searchAnime(title) {
   return await searchAnimeComplete(title);
 }
+
+// Fetch trending anime currently airing
+export async function getTrendingAnime() {
+  const query = `
+    query {
+      Page(page: 1, perPage: 10) {
+        media(type: ANIME, sort: TRENDING_DESC, status: RELEASING, isAdult: false) {
+          id
+          title { romaji }
+          coverImage { large }
+          bannerImage
+          nextAiringEpisode {
+            episode
+            timeUntilAiring
+          }
+        }
+      }
+    }
+  `;
+
+  try {
+    const response = await fetch(ANILIST_API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      body: JSON.stringify({ query })
+    });
+
+    const data = await response.json();
+    return data.data.Page.media || [];
+  } catch (error) {
+    console.error('[AniList] Get trending failed:', error);
+    return [];
+  }
+}

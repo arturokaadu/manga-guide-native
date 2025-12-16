@@ -3,8 +3,10 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Activi
 
 import { getMangaContinuation, validateEpisode } from '../services/mangaService';
 import { searchAnimeList, getAnimeWithSeasons } from '../services/anilistService';
+import { saveHistory, getHistory } from '../services/storageService';
 import { getArcsForAnime } from '../data/animeArcs';
 import RecentlyFinished from './RecentlyFinished';
+import TrendingAnime from './TrendingAnime';
 import SeasonSelector from './SeasonSelector';
 import EpisodeSelector from './EpisodeSelector';
 
@@ -16,6 +18,12 @@ export default function MangaGuide() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [backgroundImage, setBackgroundImage] = useState(null);
+    const [history, setHistory] = useState([]); // User search history
+
+    // Load history on mount
+    useEffect(() => {
+        getHistory().then(setHistory);
+    }, []);
 
     // Arc/Season selector state
     const [animeArcs, setAnimeArcs] = useState(null);
@@ -133,6 +141,17 @@ export default function MangaGuide() {
 
             if (data.animeCover) {
                 setBackgroundImage(data.animeCover);
+            }
+
+            // Save to history
+            if (data && !data.error && !data.isFiller) {
+                saveHistory({
+                    title: data.mangaTitle || animeTitle,
+                    episode: episode,
+                    chapter: data.chapter,
+                    volume: data.volume,
+                    cover: data.animeCover || data.volumeCoverUrl
+                }).then(setHistory);
             }
         } catch (err) {
             console.error('[Search Error]:', err);
@@ -322,7 +341,11 @@ export default function MangaGuide() {
                     </View>
                 )}
 
-                <RecentlyFinished onSelectAnime={handleRecentlyFinishedSelect} />
+                <RecentlyFinished
+                    onSelectAnime={handleRecentlyFinishedSelect}
+                    history={history}
+                />
+                <TrendingAnime onSelectAnime={selectAnime} />
 
                 <Text style={styles.footer}>Powered by Luna + Gemini AI 🌙✨</Text>
             </View>

@@ -4,37 +4,40 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Image } from 'react-native';
 
-// Mock data - in production would fetch from API
-const RECENTLY_FINISHED = [
-    { id: 1, title: 'Jujutsu Kaisen Season 2', chapter: 137, volume: 16, cover: 'https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx166531-4W8e5YpXRiJF.jpg' },
-    { id: 2, title: 'Frieren', chapter: 52, volume: 7, cover: 'https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx154587-gHSraOeaeODr.jpg' },
-    { id: 3, title: 'Demon Slayer Season 4', chapter: 127, volume: 15, cover: 'https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx166240-Dqr8lbslDeVq.jpg' },
-    { id: 4, title: 'Vinland Saga Season 2', chapter: 101, volume: 13, cover: 'https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx136430-7kIXhXBgVf98.jpg' },
-    { id: 5, title: 'Blue Lock Season 1', chapter: 114, volume: 13, cover: 'https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx137822-lQ6UexkIRZWb.jpg' },
-    { id: 6, title: 'Tokyo Revengers Season 3', chapter: 185, volume: 21, cover: 'https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx167893-y3yYz3EhqfbP.jpg' },
-];
+export default function RecentlyFinished({ onSelectAnime, history = [] }) {
+    if (!history || history.length === 0) return null;
 
-export default function RecentlyFinished({ onSelectAnime }) {
     return (
         <View style={styles.container}>
             <View style={styles.header}>
-                <Text style={styles.headerEmoji}>🔥</Text>
-                <Text style={styles.headerTitle}>Recently Finished</Text>
+                <Text style={styles.headerEmoji}>🕒</Text>
+                <Text style={styles.headerTitle}>Your Recent Searches</Text>
             </View>
-            <Text style={styles.headerSubtitle}>Just finished airing? See where to continue reading!</Text>
+            <Text style={styles.headerSubtitle}>Pick up where you left off!</Text>
 
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.gridContainer}>
-                {RECENTLY_FINISHED.map((anime) => (
+                {history.map((item, index) => (
                     <TouchableOpacity
-                        key={anime.id}
+                        key={`${item.title}-${index}`}
                         style={styles.animeCard}
-                        onPress={() => onSelectAnime(anime)}
+                        onPress={() => onSelectAnime({
+                            title: { romaji: item.title },
+                            lastEpisode: item.episode // Pass the searched episode
+                        })}
                     >
-                        <Image source={{ uri: anime.cover }} style={styles.animeCover} />
+                        {item.cover ? (
+                            <Image source={{ uri: item.cover }} style={styles.animeCover} />
+                        ) : (
+                            <View style={[styles.animeCover, { backgroundColor: '#333', justifyContent: 'center', alignItems: 'center' }]}>
+                                <Text style={{ fontSize: 40 }}>📚</Text>
+                            </View>
+                        )}
                         <View style={styles.animeInfo}>
-                            <Text style={styles.animeTitle} numberOfLines={2}>{anime.title}</Text>
-                            <Text style={styles.continueText}>Ch. {anime.chapter}</Text>
-                            <Text style={styles.volumeText}>Vol. {anime.volume}</Text>
+                            <Text style={styles.animeTitle} numberOfLines={2}>{item.title}</Text>
+                            <Text style={styles.continueText}>Ep. {item.episode}</Text>
+                            <Text style={styles.volumeText}>
+                                {item.chapter ? `Ch. ${item.chapter}` : ''}
+                            </Text>
                         </View>
                     </TouchableOpacity>
                 ))}
