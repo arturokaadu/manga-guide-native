@@ -1,45 +1,77 @@
 import { validateEpisode, searchAnime } from './anilistService';
+import { getVolumeInfo } from './volumeService';
 import { isFiller } from '../data/fillerLists';
 import { estimateChapter } from './rhythmCalculator';
 import * as geminiProxy from './geminiProxy';
 import { fetchVolumeCover } from './volumeCoverService';
 
-export async function getMangaContinuation(animeTitle, episode) {
+export async function getMangaContinuation(animeTitle, episode, season = null) {
     try {
-        // Step 1: Validate episode with EXACT anime title user provided
-        const validation = await validateEpisode(animeTitle, episode);
 
+        // Parallelize all independent data fetches
+        // 1. Validation (AniList)
+        // 2. Anime Metadata (AniList) - for cover/title
+        // 3. Volume Info (AniList/Cache) - for volume accuracy
+        // 4. Gemini AI (Local Proxy) - for main logic
+
+        const validationPromise = validateEpisode(animeTitle, episode);
+        const animeDataPromise = searchAnime(animeTitle);
+        const volumeInfoPromise = getVolumeInfo(animeTitle);
+
+        // Start Gemini immediately with the provided title
+        // We trade "perfect title" (from animeData) for speed
+        const geminiPromise = geminiProxy.lookupManga(animeTitle, episode, season);
+
+        // Await Validation first to fail fast if needed
+        const validation = await validationPromise;
         if (!validation.valid) {
+            // Cancel other promises if possible (JS doesn't natively support cancel, but we ignore results)
             throw new Error(validation.error);
         }
 
-        // Step 2: Check if filler
+        // Check filler locally (fast)
         if (isFiller(animeTitle, episode)) {
             return { isFiller: true, animeTitle, episode: parseInt(episode) };
         }
 
-        // Step 3: Get anime metadata for cover/title
-        const animeData = await searchAnime(animeTitle);
+        // Wait for heavy lifting
+        const [animeData, volumeInfo, geminiResult] = await Promise.all([
+            animeDataPromise,
+            volumeInfoPromise,
+            geminiPromise
+        ]);
+
         const animeCover = animeData?.coverImage?.large || null;
         const mangaTitle = animeData?.title?.romaji || animeTitle;
 
-        // Step 4: Try Gemini AI first
-        const geminiResult = await geminiProxy.lookupManga(animeTitle, episode);
-
         if (geminiResult.success) {
-            // Fetch volume cover
-            let volumeCoverUrl = null;
-            if (geminiResult.volume) {
-                volumeCoverUrl = await fetchVolumeCover(geminiResult.volume, mangaTitle);
+            let finalVolume = geminiResult.volume;
+            let volumeSource = 'Gemini AI';
+
+            if (volumeInfo && volumeInfo.volumes) {
+                // Prefer AniList volume if Gemini missing or differs
+                if (!finalVolume || finalVolume !== volumeInfo.volumes) {
+                    finalVolume = volumeInfo.volumes;
+                    volumeSource = 'AniList';
+                }
             }
 
-            // Use anime cover if volume cover not found or is placeholder
+            // Fetch volume cover based on finalVolume
+            let volumeCoverUrl = null;
+            if (finalVolume) {
+                // This depends on the result, so it must wait
+                volumeCoverUrl = await fetchVolumeCover(finalVolume, mangaTitle);
+            }
+
+            // Fallback to anime cover if needed
             if (!volumeCoverUrl || volumeCoverUrl.includes('placeholder')) {
                 volumeCoverUrl = animeCover;
             }
 
             return {
                 ...geminiResult,
+                volume: finalVolume,
+                volumeSource,
                 mangaTitle,
                 animeCover,
                 volumeCoverUrl,
@@ -47,15 +79,9 @@ export async function getMangaContinuation(animeTitle, episode) {
                 source: 'Gemini AI (High accuracy)'
             };
         } else {
-            // If Gemini fails, throw the error to frontend instead of using estimated calculator
+            // If Gemini fails, throw the error
             throw new Error(geminiResult.error || 'Gemini AI lookup failed');
         }
-
-        /* 
-        // FALBACK DISABLED AS PER USER REQUEST
-        // Step 5: Fallback to rhythm calculator
-        // ...
-        */
     } catch (error) {
         console.error('[MangaService] Error:', error);
         throw error;

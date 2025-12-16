@@ -1,5 +1,5 @@
 // AniList Service WITH CORRECT EPISODE VALIDATION
-// Counts ALL seasons, not just one
+// Counts ALL seasons recursively with optimized queries
 
 const ANILIST_API = 'https://graphql.anilist.co';
 
@@ -22,30 +22,143 @@ const KNOWN_EPISODE_TOTALS = {
   'Chainsaw Man': 12,          // S1
 };
 
-// Get anime with ALL seasons structured as arcs
-export async function getAnimeWithSeasons(title) {
-  const query = `
-    query ($search: String) {
-      Media(search: $search, type: ANIME) {
+// Helper to get media definition with nested relations (3 levels deep)
+// This reduces HTTP requests for long franchises like Dr. Stone or Monogatari
+const MEDIA_FRAGMENT = `
+  id
+  title { romaji english }
+  episodes
+  seasonYear
+  format
+  status
+  relations {
+    edges {
+      node {
         id
-        title { romaji english }
+        type
+        format
+        status
         episodes
-        coverImage { large color }
+        title { romaji }
         seasonYear
-        season
         relations {
           edges {
             node {
               id
               type
               format
+              status
               episodes
               title { romaji }
               seasonYear
+              relations {
+                edges {
+                  node {
+                    id
+                    type
+                    format
+                    status
+                    episodes
+                    title { romaji }
+                    seasonYear
+                    relations { edges { node { id type format status episodes title { romaji } seasonYear } relationType } }
+                  }
+                  relationType
+                }
+              }
             }
             relationType
           }
         }
+      }
+      relationType
+    }
+  }
+`;
+
+const MEDIA_QUERY = `
+  query ($id: Int) {
+    Media(id: $id) {
+      ${MEDIA_FRAGMENT}
+    }
+  }
+`;
+
+// Helper to extract sequel chain from nested data
+function extractSequelsFromMedia(media, chain = [], visitedIds = new Set()) {
+  if (!media || visitedIds.has(media.id)) return chain;
+
+  // Add current media if not exists
+  if (!chain.some(m => m.id === media.id)) {
+    chain.push(media);
+    visitedIds.add(media.id);
+  }
+
+  // Find next direct sequel
+  const edges = media.relations?.edges || [];
+  const sequelEdge = edges.find(edge =>
+    edge.relationType === 'SEQUEL' &&
+    edge.node.type === 'ANIME' &&
+    ['TV', 'ONA', 'TV_SHORT', 'SPECIAL'].includes(edge.node.format) &&
+    edge.node.status !== 'NOT_YET_RELEASED' &&
+    edge.node.status !== 'CANCELLED'
+  );
+
+  if (sequelEdge) {
+    // Recurse into the nested node (without fetching)
+    extractSequelsFromMedia(sequelEdge.node, chain, visitedIds);
+  }
+
+  return chain;
+}
+
+// Get full chain of seasons recursively (Optimized)
+async function fetchSequelChain(mediaId, visitedIds = new Set()) {
+  if (visitedIds.has(mediaId)) return [];
+
+  try {
+    const response = await fetch(ANILIST_API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      body: JSON.stringify({ query: MEDIA_QUERY, variables: { id: mediaId } })
+    });
+
+    const data = await response.json();
+    const media = data?.data?.Media;
+    if (!media) return [];
+
+    // Extract chain from the nested response
+    const chain = extractSequelsFromMedia(media, [], visitedIds);
+
+    // Check if we need to go deeper (if chain limit reached typically 3-4)
+    const lastMedia = chain[chain.length - 1];
+    if (chain.length >= 3 && lastMedia.id !== mediaId && !visitedIds.has('checked_' + lastMedia.id)) {
+      visitedIds.add('checked_' + lastMedia.id);
+      // Try to fetch one more time from the tail
+      const moreChain = await fetchSequelChain(lastMedia.id, visitedIds);
+      moreChain.forEach(m => {
+        if (!chain.some(ex => ex.id === m.id)) chain.push(m);
+      });
+    }
+
+    return chain;
+
+  } catch (e) {
+    console.warn('Failed to fetch sequel chain part:', e);
+    return [];
+  }
+}
+
+// Get anime with ALL seasons structured as arcs (Recursive Version)
+export async function getAnimeWithSeasons(title) {
+  // First, get the starting point
+  const initialQuery = `
+    query ($search: String) {
+      Media(search: $search, type: ANIME, sort: POPULARITY_DESC) {
+        id
+        title { romaji english }
+        episodes
+        seasonYear
       }
     }
   `;
@@ -54,125 +167,78 @@ export async function getAnimeWithSeasons(title) {
     const response = await fetch(ANILIST_API, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-      body: JSON.stringify({ query, variables: { search: title } })
+      body: JSON.stringify({ query: initialQuery, variables: { search: title } })
     });
 
     const data = await response.json();
-    if (data.errors) throw new Error('AniList API error');
+    if (data.errors || !data.data.Media) throw new Error('AniList API error or not found');
 
-    const media = data.data.Media;
+    const rootMedia = data.data.Media;
 
-    // Build seasons array from main + sequels
-    const seasons = [];
-    let episodeOffset = 0;
+    // Fetch full chain
+    const fullChain = await fetchSequelChain(rootMedia.id);
 
-    // Add main season/series
-    if (media.episodes) {
-      seasons.push({
-        name: `Season 1`,
+    // Build seasons array
+    const seasons = fullChain.map((media, index) => {
+      let name = `Season ${index + 1}`;
+      let displayTitle = media.title.english || media.title.romaji;
+
+      const isSpecial = media.format === 'SPECIAL' || media.format === 'TV_SHORT' || media.format === 'MOVIE';
+      const hasSeasonInfo = /Season|Part|Cour/i.test(displayTitle);
+
+      if (isSpecial) {
+        name = `Special: ${displayTitle}`;
+      } else if (!hasSeasonInfo) {
+        // Force context for Gemini if title is vague (e.g. "Dan Da Dan")
+        name = `Season ${index + 1}: ${displayTitle} (${media.seasonYear || '?'})`;
+      } else {
+        name = `${displayTitle} (${media.seasonYear || '?'})`;
+      }
+
+      return {
+        name: name,
         title: media.title.romaji,
         start: 1,
-        end: media.episodes,
-        year: media.seasonYear
-      });
-      episodeOffset = media.episodes;
-    }
+        episodes: media.episodes,
+        id: media.id
+      };
+    });
 
-    // Add sequel seasons
-    if (media.relations && media.relations.edges) {
-      const sequels = media.relations.edges
-        .filter(edge => edge.relationType === 'SEQUEL' && edge.node.type === 'ANIME' && edge.node.episodes)
-        .sort((a, b) => (a.node.seasonYear || 0) - (b.node.seasonYear || 0));
-
-      sequels.forEach((sequel, index) => {
-        const start = episodeOffset + 1;
-        const end = episodeOffset + sequel.node.episodes;
-
-        seasons.push({
-          name: `Season ${index + 2}`,
-          title: sequel.node.title.romaji,
-          start,
-          end,
-          year: sequel.node.seasonYear
-        });
-
-        episodeOffset = end;
-      });
-    }
+    // Fix accumulators
+    let acc = 0;
+    seasons.forEach(s => {
+      s.start = acc + 1;
+      s.end = acc + (s.episodes || 0);
+      acc += (s.episodes || 0);
+    });
 
     return {
-      ...media,
+      ...rootMedia,
       seasons,
-      totalEpisodes: episodeOffset
+      totalEpisodes: acc
     };
+
   } catch (error) {
     console.error('[AniList] Get seasons failed:', error);
     return null;
   }
 }
 
-// Get TOTAL episodes across ALL seasons/sequels
+// Get TOTAL episodes across ALL seasons/sequels (Uses same logic as getAnimeWithSeasons now)
 export async function searchAnimeComplete(title) {
-  const query = `
-    query ($search: String) {
-      Media(search: $search, type: ANIME) {
-        id
-        title { romaji english }
-        episodes
-        coverImage { large color }
-        seasonYear
-        season
-        relations {
-          edges {
-            node {
-              id
-              type
-              format
-              episodes
-              title { romaji }
-            }
-            relationType
-          }
-        }
-      }
-    }
-  `;
-
   try {
-    const response = await fetch(ANILIST_API, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-      body: JSON.stringify({ query, variables: { search: title } })
-    });
-
-    const data = await response.json();
-    if (data.errors) throw new Error('AniList API error');
-
-    const media = data.data.Media;
-
-    // Calculate TOTAL episodes including all sequels
-    let totalEpisodes = media.episodes || 0;
-
-    if (media.relations && media.relations.edges) {
-      media.relations.edges.forEach(edge => {
-        // Include SEQUEL seasons in total count
-        if (edge.relationType === 'SEQUEL' && edge.node.type === 'ANIME' && edge.node.episodes) {
-          totalEpisodes += edge.node.episodes;
-        }
-      });
-    }
-
+    const result = await getAnimeWithSeasons(title);
+    if (!result) return null;
     return {
-      ...media,
-      totalEpisodes // This is the REAL total across all seasons
+      ...result,
+      totalEpisodes: result.totalEpisodes
     };
-  } catch (error) {
-    console.error('[AniList] Search failed:', error);
+  } catch (e) {
     return null;
   }
 }
 
-// Validate episode with CORRECT total count (manual override first, then AniList)
+// Validate episode check
 export async function validateEpisode(animeTitle, episode) {
   // Check manual override first
   const knownTotal = KNOWN_EPISODE_TOTALS[animeTitle];
@@ -208,7 +274,7 @@ export async function validateEpisode(animeTitle, episode) {
     totalEpisodes,
     animeId: anime.id,
     title: anime.title.romaji,
-    cover: anime.coverImage.large
+    cover: anime.coverImage?.large
   };
 }
 
@@ -242,29 +308,57 @@ export async function searchAnimeList(query) {
     const data = await response.json();
     const results = data.data.Page.media || [];
 
-    // Filter to remove duplicate seasons - keep only first/main entry per series
+    // Filter to remove duplicate seasons
     const seen = new Set();
     const filtered = results.filter(anime => {
-      // Normalize title (remove "2nd Season", "Part 2", etc)
       const baseTitle = anime.title.romaji
         .replace(/\s*(?:2nd|3rd|4th|5th|Season|Part|Final|S[0-9]|:\s*.*Season.*)/gi, '')
         .trim()
         .toLowerCase();
 
       if (seen.has(baseTitle)) {
-        return false; // Skip duplicate
+        return false;
       }
 
       seen.add(baseTitle);
       return true;
     });
 
-    return filtered.slice(0, 10); // Limit to 10 unique results
+    return filtered.slice(0, 10);
   } catch (error) {
     console.error('[AniList] Search list failed:', error);
     return [];
   }
 }
+
+// Helper to fetch volume information for an anime by AniList ID
+export async function fetchVolumeInfo(animeId) {
+  const query = `
+    query ($id: Int) {
+      Media(id: $id) {
+        id
+        title { romaji }
+        volumes
+        chapters
+      }
+    }
+  `;
+  try {
+    const response = await fetch(ANILIST_API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      body: JSON.stringify({ query, variables: { id: animeId } })
+    });
+    const data = await response.json();
+    const media = data?.data?.Media;
+    if (!media) return null;
+    return { volumes: media.volumes, chapters: media.chapters, title: media.title.romaji };
+  } catch (e) {
+    console.warn('[AniList] fetchVolumeInfo failed:', e);
+    return null;
+  }
+}
+
 
 export async function searchAnime(title) {
   return await searchAnimeComplete(title);

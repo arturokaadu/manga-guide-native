@@ -70,9 +70,10 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
         marginLeft: 20,
         marginBottom: 10,
-        textShadowColor: 'rgba(0, 0, 0, 0.75)',
-        textShadowOffset: { width: 0, height: 1 },
-        textShadowRadius: 3,
+        textShadow: '0px 1px 3px rgba(0, 0, 0, 0.75)',
+        // textShadowColor: 'rgba(0, 0, 0, 0.75)',
+        // textShadowOffset: { width: 0, height: 1 },
+        // textShadowRadius: 3,
     },
     scrollContent: {
         paddingLeft: 20,

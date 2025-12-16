@@ -1,8 +1,8 @@
 const http = require('http');
 const https = require('https');
 
-const API_KEY = "AIzaSyD-CH4S6YpzZW_b9vdKwvwfkLsNtzjGIx8";
-const PORT = 3008;
+const API_KEY = "AIzaSyD9J7_rqycgwauz2ww-qtDiDFoeTyWa1Sc";
+const PORT = 3011;
 
 const server = http.createServer((req, res) => {
     // Set CORS headers
@@ -24,32 +24,39 @@ const server = http.createServer((req, res) => {
 
         req.on('end', async () => {
             try {
-                const { animeTitle, episode } = JSON.parse(body);
-                console.log(`[Proxy] Request: ${animeTitle} Ep ${episode}`);
+                const { animeTitle, episode, season } = JSON.parse(body);
+                console.log(`[Proxy] Request: ${animeTitle} ${season ? `(${season})` : ''} Ep ${episode}`);
 
-                const prompt = `You are a precise anime-to-manga mapping expert. Given an anime title and episode number, provide the EXACT manga chapter and volume where that episode ends, along with brief context.
+                // Construct a more explicit prompt
+                const titleWithSeason = season ? `${animeTitle} (${season})` : animeTitle;
 
-ANIME: "${animeTitle}"
-EPISODE: ${episode}
+                const prompt = `You are a precise anime-to-manga mapping expert.
+ANIME: "${titleWithSeason}"
+EPISODE: "${episode}"
 
-Respond in this EXACT JSON format (no markdown, just raw JSON):
+CRITICAL INSTRUCTION:
+1. USE GOOGLE SEARCH (Grounding) to find the exact manga chapter that corresponds to the end of this episode.
+2. Search typical queries like "${titleWithSeason} episode ${episode} manga chapter" or "where does ${titleWithSeason} leave off in manga".
+
+3. Episode Numbering:
+   - "Dandadan" Ep "24" often means Season 2 Ep 12 (Total 24?) or similar. Use Search to verify.
+   - If user says "Dandadan Ep 24", and S2 is airing, check if it exists. (Likely S1=12eps, S2=12eps => Total 24).
+   - Resolve ambiguities (Total vs Season Relative) using search results.
+
+Goal: Identify the EXACT Manga Chapter and Volume.
+
+Respond in this EXACT JSON format (no markdown):
 {
   "chapter": <number>,
   "volume": <number>,
-  "context": "<1-2 sentence description of what happens in this chapter>",
-  "source": "gemini"
-}
+  "context": "<1-2 sentence description including context from search results>",
+  "source": "gemini-search-grounding",
+  "reasoning": "<Explanation citing search findings>"
+}`;
 
-CRITICAL RULES:
-1. Provide EXACT chapter/volume numbers based on actual anime-manga correspondence
-2. If the anime adapts multiple chapters per episode, give the ENDING chapter of episode ${episode}
-3. For popular anime (Jujutsu Kaisen, Demon Slayer, etc), use well-documented episode-chapter mappings
-4. Context should mention key events/arc name in that chapter
-5. Return ONLY valid JSON, no extra text`;
-
-                // Try gemini-2.5-flash (The Future!)
+                // Use 1.5-pro (v1beta or v1) for better reasoning stability vs 2.5-flash speed
                 const googleReq = https.request(
-                    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${API_KEY}`,
+                    `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=${API_KEY}`,
                     {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' }
@@ -76,7 +83,7 @@ CRITICAL RULES:
                                 const cleanData = JSON.parse(text);
 
                                 res.writeHead(200, { 'Content-Type': 'application/json' });
-                                res.end(JSON.stringify({ success: true, ...cleanData, source: 'gemini (local proxy)' }));
+                                res.end(JSON.stringify({ success: true, ...cleanData, source: 'gemini (local proxy + search)' }));
                             } catch (e) {
                                 console.error('[Proxy] Processing Error:', e);
                                 console.error('[Proxy] Raw Body:', googleBody);
@@ -96,8 +103,10 @@ CRITICAL RULES:
                     res.end(JSON.stringify({ error: `Network Error: ${e.message}` }));
                 });
 
+                // Add Google Search Tool configuration
                 googleReq.write(JSON.stringify({
-                    contents: [{ parts: [{ text: prompt }] }]
+                    contents: [{ parts: [{ text: prompt }] }],
+                    tools: [{ google_search_retrieval: { dynamic_retrieval_config: { mode: "MODE_DYNAMIC", dynamic_threshold: 0.7 } } }]
                 }));
                 googleReq.end();
 
@@ -114,7 +123,7 @@ CRITICAL RULES:
 });
 
 server.listen(PORT, () => {
-    console.log(`\n🚀 Local Gemini 2.5 Proxy running at http://localhost:${PORT}`);
+    console.log(`\n🚀 Local Gemini 1.5 Pro (v1beta + Search) Proxy running at http://localhost:${PORT}`);
     console.log('✅ CORS enabled for all origins');
     console.log('⏳ Waiting for requests...\n');
 });
