@@ -40,7 +40,8 @@ module.exports = async (req, res) => {
     }
 
     try {
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro" });
+        // Use discovered working model
+        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-preview" });
 
         const prompt = `You are a precise anime-to-manga mapping expert. Given an anime title and episode number, provide the EXACT manga chapter and volume where that episode ends, along with brief context.
 

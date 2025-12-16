@@ -2,7 +2,7 @@ const http = require('http');
 const https = require('https');
 
 const API_KEY = "AIzaSyD-CH4S6YpzZW_b9vdKwvwfkLsNtzjGIx8";
-const PORT = 3006;
+const PORT = 3008;
 
 const server = http.createServer((req, res) => {
     // Set CORS headers
@@ -47,10 +47,9 @@ CRITICAL RULES:
 4. Context should mention key events/arc name in that chapter
 5. Return ONLY valid JSON, no extra text`;
 
-                // Try gemini-1.5-pro first
-                // Use v1beta REST endpoint
+                // Try gemini-2.5-flash (The Future!)
                 const googleReq = https.request(
-                    `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=${API_KEY}`,
+                    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${API_KEY}`,
                     {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' }
@@ -115,7 +114,7 @@ CRITICAL RULES:
 });
 
 server.listen(PORT, () => {
-    console.log(`\n🚀 Local Gemini Proxy (Manual REST) running at http://localhost:${PORT}`);
+    console.log(`\n🚀 Local Gemini 2.5 Proxy running at http://localhost:${PORT}`);
     console.log('✅ CORS enabled for all origins');
     console.log('⏳ Waiting for requests...\n');
 });

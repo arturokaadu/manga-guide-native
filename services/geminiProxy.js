@@ -3,7 +3,7 @@ import { Platform } from 'react-native';
 // Use local proxy in development (requires 'node local-proxy.js')
 // Use Vercel production URL in production
 const API_URL = (__DEV__ || (Platform.OS === 'web' && typeof window !== 'undefined' && window.location.hostname.includes('localhost')))
-  ? 'http://localhost:3006/api/manga-lookup'
+  ? 'http://localhost:3008/api/manga-lookup'
   : 'https://manga-guide-native.vercel.app/api/manga-lookup';
 
 export async function lookupManga(animeTitle, episode) {
@@ -15,7 +15,7 @@ export async function lookupManga(animeTitle, episode) {
       },
       body: JSON.stringify({ animeTitle, episode: String(episode) }),
       // Increased timeout for Gemini generation
-      signal: AbortSignal.timeout(20000)
+      signal: AbortSignal.timeout(60000)
     });
 
     if (!response.ok) {
