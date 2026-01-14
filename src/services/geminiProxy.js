@@ -4,8 +4,7 @@ import { Platform } from 'react-native';
 // Use Vercel production URL in production
 const API_URL = (__DEV__ || (Platform.OS === 'web' && typeof window !== 'undefined' && window.location.hostname.includes('localhost')))
   ? 'http://localhost:3008/api/manga-lookup'
-    ? 'http://localhost:3008/api/manga-lookup'
-    : '/api/manga-lookup'; // Relative path for Vercel (works on any domain)
+  : '/api/manga-lookup'; // Relative path for Vercel (works on any domain)
 
 export async function lookupManga(animeTitle, episode) {
   try {
