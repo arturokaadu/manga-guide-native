@@ -90,8 +90,8 @@ If you cannot find accurate information, respond with:
         } catch (primaryError) {
             console.warn('[Gemini 1.5 Pro Failed] Falling back to Flash:', primaryError.message);
 
-            // 🛡️ Fallback: Gemini 1.5 Flash-002 (Fast & Stable)
-            const fallbackModel = genAI.getGenerativeModel({ model: "gemini-1.5-flash-002" });
+            // 🛡️ Fallback: Standard Gemini 1.5 Flash (Most Reliable)
+            const fallbackModel = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
             const result = await fallbackModel.generateContent(prompt);
             const response = await result.response;
             let text = response.text().trim();
