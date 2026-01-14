@@ -45,6 +45,8 @@ module.exports = async (req, res) => {
 
         const prompt = `You are a precise anime-to-manga mapping expert. Given an anime title and episode number, provide the EXACT manga chapter and volume where that episode ends, along with brief context.
 
+Date Context: Today is ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}. Treat this as the current date for all airing information.
+
 ANIME: "${animeTitle}"
 EPISODE: ${episode}
 

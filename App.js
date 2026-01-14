@@ -1,16 +1,18 @@
 import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, View } from 'react-native';
-import MangaGuide from './components/MangaGuide';
+import MangaGuideScreen from './src/screens/MangaGuideScreen';
 
 export default function App() {
   return (
     <View style={styles.container}>
-      <MangaGuide />
-      <StatusBar style="light" />
+      <MangaGuideScreen />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0a0a15' },
+  container: {
+    flex: 1,
+    backgroundColor: '#000000' // Base void color before GlassLayout loads
+  },
 });

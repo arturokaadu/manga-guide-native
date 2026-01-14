@@ -1,7 +1,7 @@
 const http = require('http');
 const https = require('https');
 
-const API_KEY = "AIzaSyD-CH4S6YpzZW_b9vdKwvwfkLsNtzjGIx8";
+const API_KEY = "AIzaSyCd96kOFZVqM9zkChRrd3peQ00YiMrl0Xo";
 const PORT = 3008;
 
 const server = http.createServer((req, res) => {
@@ -28,6 +28,8 @@ const server = http.createServer((req, res) => {
                 console.log(`[Proxy] Request: ${animeTitle} Ep ${episode}`);
 
                 const prompt = `You are a precise anime-to-manga mapping expert. Given an anime title and episode number, provide the EXACT manga chapter and volume where that episode ends, along with brief context.
+
+Date Context: Today is ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}. Treat this as the current date for all airing information.
 
 ANIME: "${animeTitle}"
 EPISODE: ${episode}

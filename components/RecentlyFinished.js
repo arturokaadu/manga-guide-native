@@ -21,7 +21,7 @@ export default function RecentlyFinished({ onSelectAnime, history = [] }) {
                         key={`${item.title}-${index}`}
                         style={styles.animeCard}
                         onPress={() => onSelectAnime({
-                            title: { romaji: item.title },
+                            title: item.title,
                             lastEpisode: item.episode // Pass the searched episode
                         })}
                     >
