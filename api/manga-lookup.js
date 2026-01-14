@@ -40,8 +40,8 @@ module.exports = async (req, res) => {
     }
 
     try {
-        // Use discovered working model
-        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-preview" });
+        // Use stable model for production
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
         const prompt = `You are a precise anime-to-manga mapping expert. Given an anime title and episode number, provide the EXACT manga chapter and volume where that episode ends, along with brief context.
 
@@ -91,6 +91,7 @@ If you cannot find accurate information, respond with:
         return res.status(500).json({
             error: 'Gemini API request failed',
             details: error.message,
+            stack: error.stack, // Debug info
             source: 'gemini'
         });
     }
