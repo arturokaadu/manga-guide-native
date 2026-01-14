@@ -49,9 +49,9 @@ CRITICAL RULES:
 4. Context should mention key events/arc name in that chapter
 5. Return ONLY valid JSON, no extra text`;
 
-                // Try gemini-2.5-flash (The Future!)
+                // Use stable gemini-1.5-flash for local testing
                 const googleReq = https.request(
-                    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${API_KEY}`,
+                    `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`,
                     {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' }
