@@ -79,19 +79,19 @@ If you cannot find accurate information, respond with:
     let data;
 
     try {
-        // 🚀 Primary: Try Gemini 3.0 Flash (User Request / Bleeding Edge)
+        // 🚀 Primary: Gemini 1.5 Pro (Highest Accuracy)
         try {
-            const model = genAI.getGenerativeModel({ model: "gemini-3.0-flash" });
+            const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro" });
             const result = await model.generateContent(prompt);
             const response = await result.response;
             let text = response.text().trim();
             text = text.replace(/```json\n?/g, '').replace(/```\n?/g, '');
             data = JSON.parse(text);
-        } catch (bleedingEdgeError) {
-            console.warn('[Gemini 3.0 Failed] Trying fallback:', bleedingEdgeError.message);
+        } catch (primaryError) {
+            console.warn('[Gemini 1.5 Pro Failed] Falling back to Flash:', primaryError.message);
 
-            // 🛡️ Fallback: Stable Gemini 1.5 Flash
-            const fallbackModel = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+            // 🛡️ Fallback: Gemini 1.5 Flash-002 (Fast & Stable)
+            const fallbackModel = genAI.getGenerativeModel({ model: "gemini-1.5-flash-002" });
             const result = await fallbackModel.generateContent(prompt);
             const response = await result.response;
             let text = response.text().trim();
