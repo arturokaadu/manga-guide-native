@@ -48,46 +48,30 @@ module.exports = async (req, res) => {
         });
     }
 
+    let data;
+
     try {
-        // Use stable model for production
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+        // 🚀 Primary: Try the latest Gemini 2.5 Flash (Preview)
+        try {
+            const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-preview" });
+            const result = await model.generateContent(prompt);
+            const response = await result.response;
+            let text = response.text().trim();
+            text = text.replace(/```json\n?/g, '').replace(/```\n?/g, '');
+            data = JSON.parse(text);
+        } catch (primaryError) {
+            console.warn('[Gemini 2.5 Failed] Falling back to 1.5 Flash:', primaryError.message);
 
-        const prompt = `You are a precise anime-to-manga mapping expert. Given an anime title and episode number, provide the EXACT manga chapter and volume where that episode ends, along with brief context.
+            // 🛡️ Fallback: Stable Gemini 1.5 Flash
+            const fallbackModel = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+            const result = await fallbackModel.generateContent(prompt);
+            const response = await result.response;
+            let text = response.text().trim();
+            text = text.replace(/```json\n?/g, '').replace(/```\n?/g, '');
+            data = JSON.parse(text);
+        }
 
-Date Context: Today is ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}. Treat this as the current date for all airing information.
-
-ANIME: "${animeTitle}"
-EPISODE: ${episode}
-
-Respond in this EXACT JSON format (no markdown, just raw JSON):
-{
-  "chapter": <number>,
-  "volume": <number>,
-  "context": "<1-2 sentence description of what happens in this chapter>",
-  "source": "gemini"
-}
-
-CRITICAL RULES:
-1. Provide EXACT chapter/volume numbers based on actual anime-manga correspondence
-2. If the anime adapts multiple chapters per episode, give the ENDING chapter of episode ${episode}
-3. For popular anime (Jujutsu Kaisen, Demon Slayer, etc), use well-documented episode-chapter mappings
-4. Context should mention key events/arc name in that chapter
-5. Return ONLY valid JSON, no extra text
-
-If you cannot find accurate information, respond with:
-{
-  "error": "Could not find accurate mapping for this anime/episode",
-  "source": "gemini"
-}`;
-
-        const result = await model.generateContent(prompt);
-        const response = await result.response;
-        let text = response.text().trim();
-
-        // Remove markdown code blocks if present
-        text = text.replace(/```json\n?/g, '').replace(/```\n?/g, '');
-
-        const data = JSON.parse(text);
+        if (!data) throw new Error("Both models failed to generate valid JSON");
 
         if (data.error) {
             return res.status(404).json(data);
