@@ -9,12 +9,7 @@ export default function SeasonSelector({ arcs, selectedArc, onSelectArc }) {
     return (
         <View style={styles.container}>
             <Text style={styles.label}>Select Arc/Season:</Text>
-            <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                style={styles.scrollView}
-                contentContainerStyle={styles.scrollContent}
-            >
+            <View style={styles.gridContainer}>
                 {arcs.map((arc, index) => (
                     <TouchableOpacity
                         key={index}
@@ -35,7 +30,7 @@ export default function SeasonSelector({ arcs, selectedArc, onSelectArc }) {
                         </Text>
                     </TouchableOpacity>
                 ))}
-            </ScrollView>
+            </View>
         </View>
     );
 }
@@ -50,12 +45,10 @@ const styles = StyleSheet.create({
         fontWeight: '600',
         marginBottom: 8,
     },
-    scrollView: {
-        maxHeight: 120,
-    },
-    scrollContent: {
-        gap: 10,
-        paddingRight: 10,
+    gridContainer: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 8,
     },
     arcButton: {
         backgroundColor: 'rgba(139, 92, 246, 0.15)',
@@ -63,8 +56,9 @@ const styles = StyleSheet.create({
         borderColor: '#8B5CF6',
         borderRadius: 12,
         paddingVertical: 12,
-        paddingHorizontal: 16,
-        minWidth: 140,
+        paddingHorizontal: 8,
+        flexGrow: 1,
+        flexBasis: '45%', // 2 per row approx
         alignItems: 'center',
     },
     arcButtonSelected: {

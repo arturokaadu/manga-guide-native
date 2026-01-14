@@ -3,9 +3,9 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Activi
 
 import { getMangaContinuation, validateEpisode } from '../services/mangaService';
 import { searchAnimeList, getAnimeWithSeasons } from '../services/anilistService';
-import { saveHistory, getHistory } from '../services/storageService';
+import { saveHistory } from '../services/storageService';
 import { getArcsForAnime } from '../data/animeArcs';
-import RecentlyFinished from './RecentlyFinished';
+
 import TrendingAnime from './TrendingAnime';
 import SeasonSelector from './SeasonSelector';
 import EpisodeSelector from './EpisodeSelector';
@@ -18,35 +18,44 @@ export default function MangaGuide() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [backgroundImage, setBackgroundImage] = useState(null);
-    const [history, setHistory] = useState([]); // User search history
 
-    // Load history on mount
-    useEffect(() => {
-        getHistory().then(setHistory);
-    }, []);
 
+    // Arc/Season selector state
     // Arc/Season selector state
     const [animeArcs, setAnimeArcs] = useState(null);
     const [selectedArc, setSelectedArc] = useState(null);
     const [selectedEpisode, setSelectedEpisode] = useState(null);
+    const [currentAnimeDetails, setCurrentAnimeDetails] = useState(null); // Cache for performance
 
     // Animation refs
     const fadeAnim = useRef(new Animated.Value(0)).current;
     const slideAnim = useRef(new Animated.Value(-10)).current;
 
-    const handleRecentlyFinishedSelect = (anime) => {
-        setAnimeTitle(anime.title);
-        setEpisode(String(anime.lastEpisode || ''));
-    };
+    // Debounce ref to prevent 429 Errors
+    const searchTimeout = useRef(null);
 
-    const handleAnimeSearch = async (text) => {
+
+
+
+
+    const handleAnimeSearch = (text) => {
         setAnimeTitle(text);
-        if (text.length >= 2) {
-            const results = await searchAnimeList(text);
-            setSuggestions(results);
-        } else {
-            setSuggestions([]);
-        }
+
+        if (searchTimeout.current) clearTimeout(searchTimeout.current);
+
+        searchTimeout.current = setTimeout(async () => {
+            if (text.length >= 2) {
+                try {
+                    const results = await searchAnimeList(text);
+                    setSuggestions(results);
+                } catch (e) {
+                    // Ignore transient errors
+                    console.log("Search skipped", e);
+                }
+            } else {
+                setSuggestions([]);
+            }
+        }, 500);
     };
 
     const selectAnime = async (anime) => {
@@ -54,17 +63,16 @@ export default function MangaGuide() {
         setAnimeTitle(title);
         setSuggestions([]);
 
-        // Check if this anime has arcs defined
         let arcs = getArcsForAnime(title);
+        let animeData = null;
 
         // If no arcs defined, fetch REAL seasons from AniList
         if (!arcs || !arcs.hasArcs) {
             try {
-                // Query AniList for anime with REAL seasons (not auto-generated)
-                const animeData = await getAnimeWithSeasons(title);
+                // Query AniList for anime with REAL seasons
+                animeData = await getAnimeWithSeasons(title);
 
                 if (animeData && animeData.seasons && animeData.seasons.length > 0) {
-                    // Use REAL seasons from AniList
                     arcs = {
                         hasArcs: true,
                         arcs: animeData.seasons.map(season => ({
@@ -74,7 +82,6 @@ export default function MangaGuide() {
                         }))
                     };
                 } else {
-                    // Fallback: single arc with total episodes
                     const totalEps = animeData?.totalEpisodes || animeData?.episodes || 24;
                     arcs = {
                         hasArcs: true,
@@ -87,7 +94,6 @@ export default function MangaGuide() {
                 }
             } catch (error) {
                 console.error('[selectAnime] Failed to fetch seasons:', error);
-                // Fallback to generic arc
                 arcs = {
                     hasArcs: true,
                     arcs: [{
@@ -99,10 +105,11 @@ export default function MangaGuide() {
             }
         }
 
+        setCurrentAnimeDetails(animeData || { title: { romaji: title }, id: anime.id });
         setAnimeArcs(arcs);
         setSelectedArc(null);
         setSelectedEpisode(null);
-        setEpisode(''); // Clear manual episode input
+        setEpisode('');
     };
 
     const handleArcSelect = (arc) => {
@@ -124,7 +131,40 @@ export default function MangaGuide() {
         setLoading(true);
         setError(null);
 
-        const validation = await validateEpisode(animeTitle, episode);
+        // Optimization: Use cached details if available
+        let validation;
+
+        // Check if we hit the cache (title matches and we have details)
+        // Normalize titles for comparison (remove spaces/special chars)
+        const normalize = (str) => str ? str.toLowerCase().replace(/[^a-z0-9]/g, '') : '';
+        const titleNorm = normalize(animeTitle);
+
+        const isCached = currentAnimeDetails &&
+            currentAnimeDetails.title &&
+            (normalize(currentAnimeDetails.title.romaji) === titleNorm ||
+                normalize(currentAnimeDetails.title.english) === titleNorm);
+
+        if (isCached && currentAnimeDetails.totalEpisodes) {
+            // Validate LOCALLY
+            const totalEps = currentAnimeDetails.totalEpisodes;
+            if (parseInt(episode) > totalEps) {
+                validation = {
+                    valid: false,
+                    error: `${currentAnimeDetails.title.romaji} only has ${totalEps} episodes`
+                };
+            } else {
+                validation = {
+                    valid: true,
+                    totalEpisodes: totalEps,
+                    animeId: currentAnimeDetails.id,
+                    title: currentAnimeDetails.title.romaji,
+                    cover: currentAnimeDetails.coverImage?.large
+                };
+            }
+        } else {
+            // Fallback to API check
+            validation = await validateEpisode(animeTitle, episode);
+        }
 
         if (!validation.valid) {
             setError(validation.error);
@@ -136,7 +176,9 @@ export default function MangaGuide() {
         setError(null);
 
         try {
-            const data = await getMangaContinuation(animeTitle, episode);
+            // Extract season name if available (e.g., "Season 2", "Entertainment District Arc")
+            const season = selectedArc ? selectedArc.name : null;
+            const data = await getMangaContinuation(animeTitle, episode, season);
             setResult(data);
 
             if (data.animeCover) {
@@ -144,15 +186,13 @@ export default function MangaGuide() {
             }
 
             // Save to history
-            if (data && !data.error && !data.isFiller) {
-                saveHistory({
-                    title: data.mangaTitle || animeTitle,
-                    episode: episode,
-                    chapter: data.chapter,
-                    volume: data.volume,
-                    cover: data.animeCover || data.volumeCoverUrl
-                }).then(setHistory);
-            }
+            saveHistory({
+                title: data.mangaTitle || animeTitle,
+                episode: episode,
+                chapter: data.chapter,
+                volume: data.volume,
+                cover: data.animeCover || data.volumeCoverUrl
+            });
         } catch (err) {
             console.error('[Search Error]:', err);
             setError({
@@ -297,6 +337,9 @@ export default function MangaGuide() {
                                         <Text style={styles.chapterLabel}>Continue From:</Text>
                                         <Text style={styles.chapterNumber}>📖 Chapter {result.chapter}</Text>
                                         <Text style={styles.volumeNumber}>📚 Volume {result.volume}</Text>
+                                        {result.volumeSource && (
+                                            <Text style={styles.volumeSource}>Source: {result.volumeSource}</Text>
+                                        )}
                                     </View>
 
                                     {result.context && (
@@ -341,10 +384,7 @@ export default function MangaGuide() {
                     </View>
                 )}
 
-                <RecentlyFinished
-                    onSelectAnime={handleRecentlyFinishedSelect}
-                    history={history}
-                />
+
                 <TrendingAnime onSelectAnime={selectAnime} />
 
                 <Text style={styles.footer}>Powered by Luna + Gemini AI 🌙✨</Text>
@@ -372,9 +412,8 @@ const styles = StyleSheet.create({
         color: '#FF6B35',
         textAlign: 'center',
         marginBottom: 8,
-        textShadowColor: 'rgba(255, 107, 53, 0.5)',
-        textShadowOffset: { width: 0, height: 0 },
-        textShadowRadius: 10,
+        textShadow: '0px 0px 10px rgba(255, 107, 53, 0.5)',
+        volumeSource: { color: '#FFD700', fontSize: 14, marginTop: 4 },
     },
     subtitle: { fontSize: 16, color: '#FFB7C5', textAlign: 'center' },
     inputContainer: { marginBottom: 24, position: 'relative' },
@@ -387,10 +426,7 @@ const styles = StyleSheet.create({
         color: '#fff',
         fontSize: 16,
         marginBottom: 16,
-        shadowColor: '#8B5CF6',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 8,
+        boxShadow: '0px 4px 8px rgba(139, 92, 246, 0.3)',
     },
     suggestionsContainer: {
         position: 'absolute',
@@ -403,10 +439,7 @@ const styles = StyleSheet.create({
         borderColor: '#FF6B35',
         maxHeight: 200,
         zIndex: 1000,
-        shadowColor: '#FF6B35',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.4,
-        shadowRadius: 10,
+        boxShadow: '0px 4px 10px rgba(255, 107, 53, 0.4)',
     },
     suggestionItem: {
         padding: 14,
@@ -422,10 +455,7 @@ const styles = StyleSheet.create({
         padding: 18,
         borderRadius: 16,
         alignItems: 'center',
-        shadowColor: '#FF6B35',
-        shadowOffset: { width: 0, height: 6 },
-        shadowOpacity: 0.5,
-        shadowRadius: 12,
+        boxShadow: '0px 6px 12px rgba(255, 107, 53, 0.5)',
     },
     searchButtonText: { color: '#fff', fontSize: 18, fontWeight: '700' },
     errorContainer: {
@@ -507,10 +537,7 @@ const styles = StyleSheet.create({
         borderColor: '#8B5CF6',
         borderRadius: 20,
         padding: 28,
-        shadowColor: '#8B5CF6',
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.4,
-        shadowRadius: 16,
+        boxShadow: '0px 8px 16px rgba(139, 92, 246, 0.4)',
     },
     mangaTitle: { fontSize: 26, fontWeight: 'bold', color: '#FFB7C5', marginBottom: 20 },
     mainContent: { flexDirection: 'row', marginBottom: 20, gap: 16 },
@@ -520,10 +547,7 @@ const styles = StyleSheet.create({
         borderRadius: 12,
         borderWidth: 3,
         borderColor: '#FF6B35',
-        shadowColor: '#FF6B35',
-        shadowOffset: { width: 0, height: 6 },
-        shadowOpacity: 0.5,
-        shadowRadius: 12,
+        boxShadow: '0px 6px 12px rgba(255, 107, 53, 0.5)',
     },
     infoSection: { flex: 1, justifyContent: 'space-around' },
     chapterInfo: { marginBottom: 16 },
@@ -532,9 +556,7 @@ const styles = StyleSheet.create({
         fontSize: 36,
         fontWeight: 'bold',
         color: '#FF6B35',
-        textShadowColor: 'rgba(255, 107, 53, 0.5)',
-        textShadowOffset: { width: 0, height: 0 },
-        textShadowRadius: 10,
+        textShadow: '0px 0px 10px rgba(255, 107, 53, 0.5)',
     },
     volumeNumber: { fontSize: 20, color: '#FFB7C5', marginTop: 8 },
     contextInfo: {
@@ -577,10 +599,7 @@ const styles = StyleSheet.create({
         padding: 32,
         alignItems: 'center',
         marginBottom: 24,
-        shadowColor: '#FF6B35',
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.4,
-        shadowRadius: 16,
+        boxShadow: '0px 8px 16px rgba(255, 107, 53, 0.4)',
     },
     fillerEmoji: { fontSize: 56, marginBottom: 16 },
     fillerTitle: { fontSize: 26, fontWeight: 'bold', color: '#FF6B35', marginBottom: 14 },
