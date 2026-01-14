@@ -48,6 +48,34 @@ module.exports = async (req, res) => {
         });
     }
 
+    const prompt = `You are a precise anime-to-manga mapping expert. Given an anime title and episode number, provide the EXACT manga chapter and volume where that episode ends, along with brief context.
+
+Date Context: Today is ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}. Treat this as the current date for all airing information.
+
+ANIME: "${animeTitle}"
+EPISODE: ${episode}
+
+Respond in this EXACT JSON format (no markdown, just raw JSON):
+{
+  "chapter": <number>,
+  "volume": <number>,
+  "context": "<1-2 sentence description of what happens in this chapter>",
+  "source": "gemini"
+}
+
+CRITICAL RULES:
+1. Provide EXACT chapter/volume numbers based on actual anime-manga correspondence
+2. If the anime adapts multiple chapters per episode, give the ENDING chapter of episode ${episode}
+3. For popular anime (Jujutsu Kaisen, Demon Slayer, etc), use well-documented episode-chapter mappings
+4. Context should mention key events/arc name in that chapter
+5. Return ONLY valid JSON, no extra text
+
+If you cannot find accurate information, respond with:
+{
+  "error": "Could not find accurate mapping for this anime/episode",
+  "source": "gemini"
+}`;
+
     let data;
 
     try {
