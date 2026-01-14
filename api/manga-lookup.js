@@ -39,6 +39,15 @@ module.exports = async (req, res) => {
         return res.status(400).json({ error: 'Missing animeTitle or episode' });
     }
 
+    // Verify API Key availability
+    if (!process.env.GEMINI_API_KEY) {
+        console.error('[Configuration Error]: GEMINI_API_KEY is missing in environment variables.');
+        return res.status(500).json({
+            error: 'Configuration Error: Missing GEMINI_API_KEY. Please verify Vercel environment variables.',
+            source: 'server-config'
+        });
+    }
+
     try {
         // Use stable model for production
         const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
@@ -88,11 +97,12 @@ If you cannot find accurate information, respond with:
 
     } catch (error) {
         console.error('[Gemini API Error]:', error);
+
+        // Return the ACTUAL error message to the client for transparency
         return res.status(500).json({
-            error: 'Gemini API request failed',
-            details: error.message,
-            stack: error.stack, // Debug info
-            source: 'gemini'
+            error: `Gemini Error: ${error.message || 'Unknown error'}`,
+            details: error.stack,
+            source: 'gemini-api'
         });
     }
 };
