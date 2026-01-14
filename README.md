@@ -10,23 +10,23 @@ A fast, beautiful, and intelligent tool powered by **Google Gemini 1.5 Pro**. St
 
 ---
 
-## ✨ Features
+## Features
 
-- **🎯 Precision 100%**: Uses Google Gemini to analyze anime episodes and map them to manga chapters with context-aware accuracy (handles "Part 2", "Cour 2", films, etc.).
-- **🔮 Smart Search**: Glassmorphic search bar with instant autocomplete and unified titles (no more "Season 3 Part 2" mess).
-- **🍎 Apple TV Dark UI**: A premium, "Void Black" aesthetic with glassmorphism and smooth interactions.
-- **⚡ Serverless AI**: Built on Vercel Serverless Functions for instant, scalable AI responses.
-- **📅 Date-Aware**: The AI knows "today's date", ensuring accurate info for currently airing shows (like *Dandadan* or *Blue Lock*).
+- **Precision 100%**: Uses Google Gemini to analyze anime episodes and map them to manga chapters with context-aware accuracy (handles "Part 2", "Cour 2", films, etc.).
+- **Smart Search**: Glassmorphic search bar with instant autocomplete and unified titles (no more "Season 3 Part 2" mess).
+- **Apple TV Dark UI**: A premium, "Void Black" aesthetic with glassmorphism and smooth interactions.
+- **Serverless AI**: Built on Vercel Serverless Functions for instant, scalable AI responses.
+- **Date-Aware**: The AI knows "today's date", ensuring accurate info for currently airing shows (like *Dandadan* or *Blue Lock*).
 
 ![Search Demo](assets/screenshots/search.png)
 
 ## 🛠️ Stack
 
-- **Frontend**: React Native Web (Expo)
-- **Styling**: Custom Glassmorphism (StyleSheet)
-- **AI Core**: Google Gemini 1.5 Pro (via Vercel Serverless) / Flash-002 (Fallback)
-- **Data**: AniList API (Metadata) + Google Grounding
-- **Deployment**: Vercel
+- **Frontend**: ⚛️ React Native Web (Expo)
+- **Styling**: 🎨 Custom Glassmorphism (StyleSheet)
+- **AI Core**: 🧠 Google Gemini 1.5 Pro (via Vercel Serverless) / Flash-002 (Fallback)
+- **Data**: 📊 AniList API (Metadata) + Google Grounding
+- **Deployment**: ▲ Vercel
 
 ## 🚀 Running Locally
 
