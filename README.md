@@ -20,15 +20,15 @@ A fast, beautiful, and intelligent tool powered by **Google Gemini 1.5 Pro**. St
 
 ![Search Demo](assets/screenshots/search.png)
 
-## 🛠️ Stack
+## Stack
 
-- **Frontend**: ⚛️ React Native Web (Expo)
-- **Styling**: 🎨 Custom Glassmorphism (StyleSheet)
-- **AI Core**: 🧠 Google Gemini 1.5 Pro (via Vercel Serverless) / Flash-002 (Fallback)
-- **Data**: 📊 AniList API (Metadata) + Google Grounding
-- **Deployment**: ▲ Vercel
+![React Native](https://img.shields.io/badge/React_Native-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)
+![Expo](https://img.shields.io/badge/Expo-1B1F23?style=for-the-badge&logo=expo&logoColor=white)
+![Google Gemini](https://img.shields.io/badge/Google%20Gemini-8E75B2?style=for-the-badge&logo=google&logoColor=white)
+![Vercel](https://img.shields.io/badge/Vercel-000000?style=for-the-badge&logo=vercel&logoColor=white)
+![AniList](https://img.shields.io/badge/AniList-02A9FF?style=for-the-badge&logo=anilist&logoColor=white)
 
-## 🚀 Running Locally
+## Running Locally
 
 1.  **Clone the repo**
     ```bash
