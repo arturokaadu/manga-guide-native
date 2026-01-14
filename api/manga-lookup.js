@@ -51,16 +51,16 @@ module.exports = async (req, res) => {
     let data;
 
     try {
-        // 🚀 Primary: Try the latest Gemini 2.5 Flash (Preview)
+        // 🚀 Primary: Try Gemini 3.0 Flash (User Request / Bleeding Edge)
         try {
-            const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-preview" });
+            const model = genAI.getGenerativeModel({ model: "gemini-3.0-flash" });
             const result = await model.generateContent(prompt);
             const response = await result.response;
             let text = response.text().trim();
             text = text.replace(/```json\n?/g, '').replace(/```\n?/g, '');
             data = JSON.parse(text);
-        } catch (primaryError) {
-            console.warn('[Gemini 2.5 Failed] Falling back to 1.5 Flash:', primaryError.message);
+        } catch (bleedingEdgeError) {
+            console.warn('[Gemini 3.0 Failed] Trying fallback:', bleedingEdgeError.message);
 
             // 🛡️ Fallback: Stable Gemini 1.5 Flash
             const fallbackModel = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
